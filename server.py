@@ -1,6 +1,8 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+# process cli
+
 # start IDS class in 'listen' mode
     ## wait for connection
 
