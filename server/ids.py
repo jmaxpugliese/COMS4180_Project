@@ -15,14 +15,18 @@ def main():
     # start IDS
     s = init_socket(args)
 
+    run()
+
+
+def run():
     # wait for message
     msg = listen()
 
     # send message to server for processing
-    response = server.process(msg)
+    byte_response = server.process(msg)
 
     # respond to client
-    send(response)
+    send(byte_response)
 
 # listen for messages on initialized port
 def listen():
@@ -43,11 +47,11 @@ def listen():
     # except:
     #     exit_with_msg('Unable to receive message from client. Please try again.')
 
-def send(r):
-    CONNECTED_SOCKET.send(str.encode(r))
+def send(b):
+    CONNECTED_SOCKET.send(b)
 
     # back to listening
-    listen()
+    run()
 
 # initialize socket for incoming messages
 def init_socket(port):

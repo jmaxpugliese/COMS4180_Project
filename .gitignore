@@ -4,3 +4,6 @@
 /lib
 .Python
 pip-selfcheck.json
+
+# Python class cache
+*/__pycache__

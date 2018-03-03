@@ -34,7 +34,7 @@ def prompt():
 # split input string into command and optional filename tuple
 def parse_input(str):
     segs = str.split(' ')
-    return (segs[0], (segs[1] if len(segs) > 1 else ''))
+    return (segs[0].lower(), (segs[1] if len(segs) > 1 else ''))
 
 # process input
 def process_input(input_tuple):
@@ -45,9 +45,7 @@ def process_input(input_tuple):
         print('put')
 
     elif input_tuple[0] == 'get':
-        # send cmd
-        # save response as file
-        print('get')
+        exec_get(input_tuple[1])
 
     elif input_tuple[0] == 'ls':
         exec_ls()
@@ -62,8 +60,19 @@ def process_input(input_tuple):
 
 # listen for a response on the open socket
 def listen():
-    msg = CONNECTED_SOCKET.recv(1024)
+    buff_size = 1024
+    msg = b''
+    listening = True
+    while listening:
+        seg = CONNECTED_SOCKET.recv(1024)
+        # inspect segment
+        print(seg)
+        msg += seg
+        if len(seg) < buff_size:
+            listening = False
+
     return msg
+    # except:
 
 # execute the `ls` command
 def exec_ls():
@@ -72,6 +81,24 @@ def exec_ls():
     filelist = response.decode('utf-8')
     print (filelist)
     prompt()
+
+# execute the `get` command
+def exec_get(filename):
+    cmd = 'get ' + filename
+    CONNECTED_SOCKET.send(str.encode(cmd))
+    response = listen()
+    save_received_message(filename, response)
+    prompt()
+
+# write message to disk
+def save_received_message(filename, text):
+    try:
+        f = open(filename, 'wb')
+        f.write(text)
+        f.close()
+    except:
+        graceful_exit('Error writing to disk.')
+
 
 # retrieve and validate runtime arguments before starting the application
 def get_runtime_args():
