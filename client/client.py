@@ -98,7 +98,7 @@ def exec_put(filename):
                 file_bytes += byte
                 byte = f.read(1)
 
-        payload = b'put ' + file_bytes
+        payload = b'put ' + str.encode(filename) + b' ' + file_bytes
         CONNECTED_SOCKET.send(payload)
         prompt()
     except:

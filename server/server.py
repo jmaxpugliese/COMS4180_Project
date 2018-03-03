@@ -4,14 +4,14 @@
 import os
 
 def process(msg):
-    cmd, payload = parse(msg)
+    cmd, filename, payload = parse(msg)
 
     # process cmd
     if cmd == 'put':
-        exec_put(payload)
+        return exec_put(filename, payload)
 
     elif cmd == 'get':
-        return exec_get(payload)
+        return exec_get(filename)
 
     elif cmd == 'ls':
         return exec_ls()
@@ -23,7 +23,22 @@ def process(msg):
 # split input string into command and optional filename tuple
 def parse(msg):
     segs = msg.split(b' ')
-    return (segs[0].decode('utf-8').lower(), (segs[1] if len(segs) > 1 else ''))
+
+    # parse cmd
+    cmd = segs[0].decode('utf-8').lower()
+
+    # optionally, parse filename
+    filename = ''
+    if len(segs) > 1:
+        filename = segs[1]
+
+    # optionally, parse file payload
+    payload = ''
+    if len(segs) > 2:
+        payload = b' '.join(segs[2:])
+        print(payload)
+
+    return (cmd, filename, payload)
 
 def exec_ls():
     files = [f for f in os.listdir('.') if os.path.isfile(os.path.join('.', f))]
@@ -42,10 +57,11 @@ def exec_get(filename):
     except:
         graceful_exit('Error loading transfer file. Please try again.')
 
-def exec_put(file_payload):
+def exec_put(filename, payload):
     # try:
-        f = open('womp', 'wb')
-        f.write(file_payload)
+        f = open(filename, 'wb')
+        f.write(payload)
         f.close()
+        return b'Transfer successful'
     # except:
     #     graceful_exit('Error writing to disk.')
