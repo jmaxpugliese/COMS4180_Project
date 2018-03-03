@@ -71,7 +71,7 @@ def get_runtime_args():
             # return args as tuple
             return (sys.argv[1], int(sys.argv[2]))
         else:
-            exit_with_msg('Please specify Client input with format:\n`server-ip-address`\n`server-connection-port`\n')
+            exit_with_msg('Please specify Client input with format:\n`<server-ip-address>`\n`<server-connection-port>`\n')
 
     except OSError:
         exit_with_msg('Invalid IP Address. Please try again')
