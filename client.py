@@ -9,29 +9,68 @@ def main():
     args = get_runtime_args()
 
     # print supported cmd's to user
-    # print_help()
+    print_supported_commands('Welcome to our simple FTP client!')
 
-    # listen for cmd
-    cmd = listen()
+    # prompt user for input
+    prompt()
 
-# process cmd
-    ## do `put`
-        ### upload file
-        ### send
+    # process cmd
+    if input_tuple[0] == 'put':
+        # upload file
+        # send
+        print('put')
 
-    ## do `get`
-        ### send cmd
-        ### save response as file
+    elif input_tuple[0] == 'get':
+        # send cmd
+        # save response as file
+        print('get')
 
-    ## do `ls`
-        ### send cmd
-        ### output response
+    elif input_tuple[0] == 'ls':
+        # send cmd
+        # output response
+        print('exit')
 
-    ## do `exit`s
+    elif input_tuple[0] == 'exit':
+        print('exit')
 
-def listen():
-    cmd = input('cmd: ')
-    return cmd
+    else:
+        print_supported_commands('Unfortunately that command is not supported.')
+
+# prompt user for input
+def prompt():
+    raw_in = input('cmd: ')
+    input_tuple = parse_input(raw_in)
+    process_input(input_tuple)
+
+# split input string into command and optional filename tuple
+def parse_input(str):
+    segs = str.split(' ')
+    return (segs[0], (segs[1] if len(segs) > 1 else ''))
+
+# process input
+def process_input(input_tuple):
+    # process cmd
+    if input_tuple[0] == 'put':
+        # upload file
+        # send
+        print('put')
+
+    elif input_tuple[0] == 'get':
+        # send cmd
+        # save response as file
+        print('get')
+
+    elif input_tuple[0] == 'ls':
+        # send cmd
+        # output response
+        print('exit')
+
+    elif input_tuple[0] == 'exit':
+        exit_with_msg('Thank you!')
+
+    else:
+        print_supported_commands('Unfortunately that command is not supported.')
+        prompt()
 
 # Retrieve and validate runtime arguments before starting the application
 def get_runtime_args():
@@ -51,6 +90,16 @@ def get_runtime_args():
         exit_with_msg('Invalid IP Address. Please try again')
     except ValueError:
         exit_with_msg('Port must be an integer. Please try again.')
+
+# Print supported commands with optional pre-message
+def print_supported_commands(pre_message):
+    if pre_message != None:
+        print('\n' + pre_message + '\n')
+    print('The supported are as follows:')
+    print('`put <filename>`: Upload and send <filename> to the server.')
+    print('`get <filename>`: Download <filename> from the server.')
+    print('`ls`: Print a list of files available to download.')
+    print('`exit`: Exit running application.\n')
 
 # Print message then exit
 def exit_with_msg(m):
