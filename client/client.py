@@ -40,9 +40,7 @@ def parse_input(str):
 def process_input(input_tuple):
     # process cmd
     if input_tuple[0] == 'put':
-        # upload file
-        # send
-        print('put')
+        exec_put(input_tuple[1])
 
     elif input_tuple[0] == 'get':
         exec_get(input_tuple[1])
@@ -89,6 +87,23 @@ def exec_get(filename):
     response = listen()
     save_received_message(filename, response)
     prompt()
+
+# execute the `put` command
+def exec_put(filename):
+    try:
+        file_bytes = b''
+        with open(filename, 'rb') as f:
+            byte = f.read(1)
+            while byte:
+                file_bytes += byte
+                byte = f.read(1)
+
+        payload = b'put ' + file_bytes
+        CONNECTED_SOCKET.send(payload)
+        prompt()
+    except:
+        graceful_exit('Error loading transfer file. Please try again.')
+
 
 # write message to disk
 def save_received_message(filename, text):

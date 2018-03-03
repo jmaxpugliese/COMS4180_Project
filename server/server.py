@@ -8,9 +8,7 @@ def process(msg):
 
     # process cmd
     if cmd == 'put':
-        # upload file
-        # send
-        print('put')
+        exec_put(payload)
 
     elif cmd == 'get':
         return exec_get(payload)
@@ -43,3 +41,11 @@ def exec_get(filename):
         return file_bytes
     except:
         graceful_exit('Error loading transfer file. Please try again.')
+
+def exec_put(file_payload):
+    # try:
+        f = open('womp', 'wb')
+        f.write(file_payload)
+        f.close()
+    # except:
+    #     graceful_exit('Error writing to disk.')
