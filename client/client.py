@@ -60,10 +60,16 @@ def process_input(input_tuple):
         print_supported_commands('Unfortunately that command is not supported.')
         prompt()
 
+# listen for a response on the open socket
+def listen():
+    msg = CONNECTED_SOCKET.recv(1024)
+    return msg
+
 # execute the `ls` command
 def exec_ls():
     CONNECTED_SOCKET.send(b'ls')
-    # response = listen()
+    response = listen()
+    print (response)
 
 # retrieve and validate runtime arguments before starting the application
 def get_runtime_args():

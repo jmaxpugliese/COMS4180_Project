@@ -36,22 +36,24 @@ def main():
 
 # listen for messages on initialized port
 def listen(s):
-    try:
-        # ensure the entire message is received before process
-        buff_size = 1024
-        msg = b''
-        listening = True
-        while listening:
-            conn, addr = s.accept()
-            seg = conn.recv(1024)
-            print(seg)
-            msg += seg
-            if len(seg) < buff_size:
-                receiving = False
-        print (msg)
-        return msg
-    except:
-        exit_with_msg('Unable to receive message from client. Please try again.')
+    # try:
+    # ensure the entire message is received before process
+    buff_size = 1024
+    msg = b''
+    listening = True
+    while listening:
+        conn, addr = s.accept()
+        seg = conn.recv(1024)
+        print(seg)
+        msg += seg
+        if len(seg) < buff_size:
+            listening = False
+    print (msg)
+
+    conn.send(b'test')
+    return msg
+    # except:
+    #     exit_with_msg('Unable to receive message from client. Please try again.')
 
 # initialize socket for incoming messages
 def init_socket(port):
