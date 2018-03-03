@@ -69,7 +69,9 @@ def listen():
 def exec_ls():
     CONNECTED_SOCKET.send(b'ls')
     response = listen()
-    print (response)
+    filelist = response.decode('utf-8')
+    print (filelist)
+    prompt()
 
 # retrieve and validate runtime arguments before starting the application
 def get_runtime_args():
