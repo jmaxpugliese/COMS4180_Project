@@ -9,18 +9,18 @@ def main():
     args = get_runtime_args()
 
     # open connection to server
-    establish_connection(args[0], args[1])
+    s = establish_connection(args[0], args[1])
 
     # print supported cmd's to user
     print_supported_commands('Welcome to our simple FTP client!')
 
     # prompt user for input
-    prompt()
+    # prompt()
 
-def establish_connection(ip_addr, socket_no):
+def establish_connection(ip_addr, port):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.settimeout(10)
-    s.connect((ip_addr, socket_no))
+    s.connect((ip_addr, port))
     return s
 
 # prompt user for input
