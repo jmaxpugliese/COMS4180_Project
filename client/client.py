@@ -4,24 +4,26 @@
 import sys
 import socket
 
+CONNECTED_SOCKET = None
+
 def main():
     # process cli
     args = get_runtime_args()
 
     # open connection to server
-    s = establish_connection(args[0], args[1])
+    establish_connection(args[0], args[1])
 
     # print supported cmd's to user
     print_supported_commands('Welcome to our simple FTP client!')
 
     # prompt user for input
-    # prompt()
+    prompt()
 
 def establish_connection(ip_addr, port):
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.settimeout(10)
-    s.connect((ip_addr, port))
-    return s
+    global CONNECTED_SOCKET
+    CONNECTED_SOCKET = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    CONNECTED_SOCKET.settimeout(10)
+    CONNECTED_SOCKET.connect((ip_addr, port))
 
 # prompt user for input
 def prompt():
@@ -48,18 +50,22 @@ def process_input(input_tuple):
         print('get')
 
     elif input_tuple[0] == 'ls':
-        # send cmd
-        # output response
-        print('ls')
+        exec_ls()
 
     elif input_tuple[0] == 'exit':
+        CONNECTED_SOCKET.close()
         exit_with_msg('Thank you!')
 
     else:
         print_supported_commands('Unfortunately that command is not supported.')
         prompt()
 
-# Retrieve and validate runtime arguments before starting the application
+# execute the `ls` command
+def exec_ls():
+    CONNECTED_SOCKET.send(b'ls')
+    # response = listen()
+
+# retrieve and validate runtime arguments before starting the application
 def get_runtime_args():
     try:
         # index 1: server ip address

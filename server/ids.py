@@ -9,10 +9,10 @@ def main():
     args = get_runtime_args()
 
     # start IDS
-    s, conn = init_socket(args)
+    s = init_socket(args)
 
     # wait for message
-    msg = wait_for_message(conn)
+    msg = listen(s)
 
     ## read byte by byte and identifier signature
 
@@ -35,14 +35,16 @@ def main():
         ### send ACK
 
 # listen for messages on initialized port
-def wait_for_message(conn):
+def listen(s):
     try:
         # ensure the entire message is received before process
         buff_size = 1024
         msg = b''
-        receiving = True
-        while receiving:
+        listening = True
+        while listening:
+            conn, addr = s.accept()
             seg = conn.recv(1024)
+            print(seg)
             msg += seg
             if len(seg) < buff_size:
                 receiving = False
@@ -56,10 +58,9 @@ def init_socket(port):
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.bind(('', port))
-        s.listen(1)
+        s.listen(1024)
         print ('IDS is listening on port: %d' % port)
-        conn, addr = s.accept()
-        return s, conn
+        return s
     except:
         exit_with_msg('Unable to bind to port and listen for messages. Please try again.')
 
