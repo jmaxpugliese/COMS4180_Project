@@ -35,7 +35,6 @@ def parse(msg):
     payload = ''
     if len(segs) > 2:
         payload = b' '.join(segs[2:])
-        print(payload)
 
     return (cmd, filename, payload)
 
@@ -70,12 +69,11 @@ def exec_put(filename, payload):
     # ensure payload is defined
     if len(payload) == 0:
         return format_error('Cannot create an empty file.')
-
     # try:
-        f = open(filename, 'wb')
-        f.write(payload)
-        f.close()
-        return b'Transfer successful'
+    f = open(filename, 'wb')
+    f.write(payload)
+    f.close()
+    return b'Transfer successful'
     # except:
     #     graceful_exit('Error writing to disk.')
 

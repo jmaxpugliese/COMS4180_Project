@@ -39,7 +39,6 @@ def listen():
         while listening:
             seg = CONNECTED_SOCKET.recv(1024)
             # inspect segment
-            print(seg)
             msg += seg
             if len(seg) < buff_size:
                 listening = False
@@ -53,7 +52,7 @@ def listen():
 
 def send(b):
     try:
-        # print('fake send')
+        print(b)
         CONNECTED_SOCKET.send(b)
     except:
         CONNECTED_SOCKET.close()

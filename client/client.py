@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+import os
 import sys
 import socket
 
@@ -50,8 +51,11 @@ def parse_input(str):
         filename = ''
         if cmd == 'put' or cmd == 'get':
             filename = segs[1]
+
+        if filename.find('/') != -1:
+            raise
     except:
-        print_error('A <filename> must be provided for this type of command.')
+        print_error('A <filename> with no path must be provided for this type of command.')
         return False
 
     return (cmd, filename)
@@ -128,6 +132,8 @@ def exec_put(filename):
         response = listen()
         if response != None:
             print (response)
+    except FileNotFoundError:
+        print_error(filename + ' does not exist.')
     except:
         print_error('Unable to load ' + filename + '.')
 
