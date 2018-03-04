@@ -45,6 +45,10 @@ def exec_ls():
     return str.encode(response)
 
 def exec_get(filename):
+    # ensure filename is defined
+    if len(filename) == 0:
+        return format_error('A <filename> must be provided for this type of command.')
+
     try:
         file_bytes = b''
         with open(filename, 'rb') as f:
@@ -53,10 +57,20 @@ def exec_get(filename):
                 file_bytes += byte
                 byte = f.read(1)
         return file_bytes
+    except FileNotFoundError:
+        return format_error(filename.decode('utf-8') + ' does not exist on the server.')
     except:
         return format_error('Server is unable to load ' + filename.decode('utf-8'))
 
 def exec_put(filename, payload):
+    # ensure filename is defined
+    if len(filename) == 0:
+        return format_error('A <filename> must be provided for this type of command.')
+
+    # ensure payload is defined
+    if len(payload) == 0:
+        return format_error('Cannot create an empty file.')
+
     # try:
         f = open(filename, 'wb')
         f.write(payload)
