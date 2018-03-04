@@ -55,7 +55,7 @@ def exec_get(filename):
                 byte = f.read(1)
         return file_bytes
     except:
-        graceful_exit('Error loading transfer file. Please try again.')
+        return b'Server is unable to load ' + filename
 
 def exec_put(filename, payload):
     # try:

@@ -59,18 +59,15 @@ def process_input(input_tuple):
 # listen for a response on the open socket
 def listen():
     buff_size = 1024
-    msg = b''
+    payload = b''
     listening = True
     while listening:
         seg = CONNECTED_SOCKET.recv(1024)
-        # inspect segment
-        print(seg)
-        msg += seg
+        payload += seg
         if len(seg) < buff_size:
             listening = False
 
-    return msg
-    # except:
+    return payload
 
 # execute the `ls` command
 def exec_ls():
@@ -82,10 +79,13 @@ def exec_ls():
 
 # execute the `get` command
 def exec_get(filename):
-    cmd = 'get ' + filename
-    CONNECTED_SOCKET.send(str.encode(cmd))
-    response = listen()
-    save_received_message(filename, response)
+    try:
+        cmd = 'get ' + filename
+        CONNECTED_SOCKET.send(str.encode(cmd))
+        response = listen()
+        save_received_message(filename, response)
+    except:
+        print_error('Unable to ')
     prompt()
 
 # execute the `put` command
@@ -100,9 +100,10 @@ def exec_put(filename):
 
         payload = b'put ' + str.encode(filename) + b' ' + file_bytes
         CONNECTED_SOCKET.send(payload)
-        prompt()
     except:
-        graceful_exit('Error loading transfer file. Please try again.')
+        print_error('Unable to load ' + filename + '.')
+
+    prompt()
 
 
 # write message to disk
@@ -112,7 +113,7 @@ def save_received_message(filename, text):
         f.write(text)
         f.close()
     except:
-        graceful_exit('Error writing to disk.')
+        print_error('Error writing to disk.')
 
 
 # retrieve and validate runtime arguments before starting the application
@@ -143,6 +144,10 @@ def print_supported_commands(pre_message):
     print('`get <filename>`: Download <filename> from the server.')
     print('`ls`: Print a list of files available to download.')
     print('`exit`: Exit running application.\n')
+
+# Print formatted error message
+def print_error(m):
+    print('\n\nError: ' + m + '\n')
 
 # Print message then exit
 def exit_with_msg(m):
