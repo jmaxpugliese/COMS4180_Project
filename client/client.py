@@ -21,7 +21,6 @@ def main():
     # prompt user for input
     while True:
         prompt()
-        print('running again!')
 
 def establish_connection(ip_addr, port):
     global CONNECTED_SOCKET
@@ -67,7 +66,6 @@ def listen():
         listening = True
         while listening:
             seg = CONNECTED_SOCKET.recv(1024)
-            print('max!')
             payload += seg
             if len(seg) < buff_size:
                 listening = False
