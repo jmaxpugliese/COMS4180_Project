@@ -60,26 +60,30 @@ def process_input(input_tuple):
 
 # listen for a response on the open socket
 def listen():
-    buff_size = 1024
-    payload = b''
-    listening = True
-    while listening:
-        seg = CONNECTED_SOCKET.recv(1024)
-        payload += seg
-        if len(seg) < buff_size:
-            listening = False
+    try:
+        buff_size = 1024
+        payload = b''
+        listening = True
+        while listening:
+            seg = CONNECTED_SOCKET.recv(1024)
+            payload += seg
+            if len(seg) < buff_size:
+                listening = False
 
-    if payload[0:4] == ERROR_MSG_PREFIX:
-        print_error(payload[5:].decode('utf-8'))
-        prompt()
-    return payload
+        if payload[0:4] == ERROR_MSG_PREFIX:
+            print_error(payload[5:].decode('utf-8'))
+            prompt()
+        return payload
+    except socket.timeout:
+        print_error('No response from Server. Try again.')
 
 # execute the `ls` command
 def exec_ls():
     CONNECTED_SOCKET.send(b'ls')
     response = listen()
-    filelist = response.decode('utf-8')
-    print (filelist)
+    if response != None:
+        filelist = response.decode('utf-8')
+        print (filelist)
     prompt()
 
 # execute the `get` command

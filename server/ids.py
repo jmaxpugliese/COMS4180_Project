@@ -48,7 +48,7 @@ def listen():
     #     exit_with_msg('Unable to receive message from client. Please try again.')
 
 def send(b):
-    CONNECTED_SOCKET.send(b)
+    # CONNECTED_SOCKET.send(b)
 
     # back to listening
     run()
