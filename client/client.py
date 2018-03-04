@@ -19,7 +19,8 @@ def main():
     print_supported_commands('Welcome to our simple FTP client!')
 
     # prompt user for input
-    prompt()
+    while True:
+        prompt()
 
 def establish_connection(ip_addr, port):
     global CONNECTED_SOCKET
@@ -56,7 +57,6 @@ def process_input(input_tuple):
 
     else:
         print_supported_commands('Unfortunately that command is not supported.')
-        prompt()
 
 # listen for a response on the open socket
 def listen():
@@ -72,7 +72,6 @@ def listen():
 
         if payload[0:4] == ERROR_MSG_PREFIX:
             print_error(payload[5:].decode('utf-8'))
-            prompt()
         return payload
     except socket.timeout:
         print_error('No response from Server. Try again.')
@@ -84,7 +83,6 @@ def exec_ls():
     if response != None:
         filelist = response.decode('utf-8')
         print (filelist)
-    prompt()
 
 # execute the `get` command
 def exec_get(filename):
@@ -93,10 +91,8 @@ def exec_get(filename):
         CONNECTED_SOCKET.send(str.encode(cmd))
         response = listen()
         save_received_message(filename, response)
-        prompt()
     except:
         print_error('Unable to save ' + filename)
-        prompt()
 
 # execute the `put` command
 def exec_put(filename):
@@ -112,9 +108,6 @@ def exec_put(filename):
         CONNECTED_SOCKET.send(payload)
     except:
         print_error('Unable to load ' + filename + '.')
-
-    prompt()
-
 
 # write message to disk
 def save_received_message(filename, text):
