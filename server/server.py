@@ -17,8 +17,7 @@ def process(msg):
         return exec_ls()
 
     else:
-        print(cmd)
-        print('sadness')
+        return format_error('Unsupported command.')
 
 # split input string into command and optional filename tuple
 def parse(msg):
@@ -55,7 +54,7 @@ def exec_get(filename):
                 byte = f.read(1)
         return file_bytes
     except:
-        return b'Server is unable to load ' + filename
+        return format_error('Server is unable to load ' + filename.decode('utf-8'))
 
 def exec_put(filename, payload):
     # try:
@@ -65,3 +64,6 @@ def exec_put(filename, payload):
         return b'Transfer successful'
     # except:
     #     graceful_exit('Error writing to disk.')
+
+def format_error(error_str):
+    return b'0000 ' + str.encode(error_str)

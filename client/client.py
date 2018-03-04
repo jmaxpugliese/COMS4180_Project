@@ -6,6 +6,8 @@ import socket
 
 CONNECTED_SOCKET = None
 
+ERROR_MSG_PREFIX = b'0000'
+
 def main():
     # process cli
     args = get_runtime_args()
@@ -67,6 +69,9 @@ def listen():
         if len(seg) < buff_size:
             listening = False
 
+    if payload[0:4] == ERROR_MSG_PREFIX:
+        print_error(payload[5:].decode('utf-8'))
+        prompt()
     return payload
 
 # execute the `ls` command
@@ -84,9 +89,10 @@ def exec_get(filename):
         CONNECTED_SOCKET.send(str.encode(cmd))
         response = listen()
         save_received_message(filename, response)
+        prompt()
     except:
-        print_error('Unable to ')
-    prompt()
+        print_error('Unable to save ' + filename)
+        prompt()
 
 # execute the `put` command
 def exec_put(filename):
