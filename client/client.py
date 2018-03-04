@@ -21,6 +21,7 @@ def main():
     # prompt user for input
     while True:
         prompt()
+        print('running again!')
 
 def establish_connection(ip_addr, port):
     global CONNECTED_SOCKET
@@ -66,13 +67,15 @@ def listen():
         listening = True
         while listening:
             seg = CONNECTED_SOCKET.recv(1024)
+            print('max!')
             payload += seg
             if len(seg) < buff_size:
                 listening = False
 
         if payload[0:4] == ERROR_MSG_PREFIX:
             print_error(payload[5:].decode('utf-8'))
-        return payload
+        else:
+            return payload
     except socket.timeout:
         print_error('No response from Server. Try again.')
 
@@ -90,7 +93,8 @@ def exec_get(filename):
         cmd = 'get ' + filename
         CONNECTED_SOCKET.send(str.encode(cmd))
         response = listen()
-        save_received_message(filename, response)
+        if response != None:
+            save_received_message(filename, response)
     except:
         print_error('Unable to save ' + filename)
 
@@ -106,6 +110,9 @@ def exec_put(filename):
 
         payload = b'put ' + str.encode(filename) + b' ' + file_bytes
         CONNECTED_SOCKET.send(payload)
+        response = listen()
+        if response != None:
+            print (response)
     except:
         print_error('Unable to load ' + filename + '.')
 

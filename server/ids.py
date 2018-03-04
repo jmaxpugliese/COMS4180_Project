@@ -19,14 +19,15 @@ def main():
 
 
 def run():
-    # wait for message
-    msg = listen()
+    while True:
+        # wait for message
+        msg = listen()
 
-    # send message to server for processing
-    byte_response = server.process(msg)
+        # send message to server for processing
+        byte_response = server.process(msg)
 
-    # respond to client
-    send(byte_response)
+        # respond to client
+        send(byte_response)
 
 # listen for messages on initialized port
 def listen():
@@ -48,10 +49,8 @@ def listen():
     #     exit_with_msg('Unable to receive message from client. Please try again.')
 
 def send(b):
-    # CONNECTED_SOCKET.send(b)
-
-    # back to listening
-    run()
+    # print('fake send')
+    CONNECTED_SOCKET.send(b)
 
 # initialize socket for incoming messages
 def init_socket(port):
