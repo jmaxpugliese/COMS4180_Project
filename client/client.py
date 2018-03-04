@@ -23,21 +23,38 @@ def main():
         prompt()
 
 def establish_connection(ip_addr, port):
-    global CONNECTED_SOCKET
-    CONNECTED_SOCKET = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    CONNECTED_SOCKET.settimeout(10)
-    CONNECTED_SOCKET.connect((ip_addr, port))
+    try:
+        global CONNECTED_SOCKET
+        CONNECTED_SOCKET = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        CONNECTED_SOCKET.settimeout(10)
+        CONNECTED_SOCKET.connect((ip_addr, port))
+    except ConnectionRefusedError:
+        exit_with_msg('Connection refused. Please check IP Address and port are correct and try again.')
 
 # prompt user for input
 def prompt():
     raw_in = input('cmd: ')
     input_tuple = parse_input(raw_in)
-    process_input(input_tuple)
+    if input_tuple != False:
+        process_input(input_tuple)
 
 # split input string into command and optional filename tuple
 def parse_input(str):
     segs = str.split(' ')
-    return (segs[0].lower(), (segs[1] if len(segs) > 1 else ''))
+
+    # define command to execute
+    cmd = segs[0].lower()
+
+    # ensure 2nd argument is optionally defined
+    try:
+        filename = ''
+        if cmd == 'put' or cmd == 'get':
+            filename = segs[1]
+    except:
+        print_error('A <filename> must be provided for this type of command.')
+        return False
+
+    return (cmd, filename)
 
 # process input
 def process_input(input_tuple):

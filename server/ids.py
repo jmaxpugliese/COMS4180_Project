@@ -31,26 +31,33 @@ def run():
 
 # listen for messages on initialized port
 def listen():
-    # try:
-    # ensure the entire message is received before process
-    buff_size = 1024
-    msg = b''
-    listening = True
-    while listening:
-        seg = CONNECTED_SOCKET.recv(1024)
-        # inspect segment
-        print(seg)
-        msg += seg
-        if len(seg) < buff_size:
-            listening = False
+    try:
+        # ensure the entire message is received before process
+        buff_size = 1024
+        msg = b''
+        listening = True
+        while listening:
+            seg = CONNECTED_SOCKET.recv(1024)
+            # inspect segment
+            print(seg)
+            msg += seg
+            if len(seg) < buff_size:
+                listening = False
 
-    return msg
-    # except:
-    #     exit_with_msg('Unable to receive message from client. Please try again.')
+        return msg
+    except ConnectionResetError:
+        CONNECTED_SOCKET.close()
+        exit_with_msg('Socket connection reset. Please start application again.')
+    except:
+        exit_with_msg('Unable to receive message from client. Please try again.')
 
 def send(b):
-    # print('fake send')
-    CONNECTED_SOCKET.send(b)
+    try:
+        # print('fake send')
+        CONNECTED_SOCKET.send(b)
+    except:
+        CONNECTED_SOCKET.close()
+        exit_with_msg('Unknown error; exiting IDS.')
 
 # initialize socket for incoming messages
 def init_socket(port):
