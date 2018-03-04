@@ -4,6 +4,7 @@
 import os
 import sys
 import socket
+import hashlib
 
 CONNECTED_SOCKET = None
 
@@ -108,26 +109,43 @@ def exec_ls():
 
 # execute the `get` command
 def exec_get(filename):
-    try:
-        cmd = 'get ' + filename
-        CONNECTED_SOCKET.send(str.encode(cmd))
-        response = listen()
-        if response != None:
-            save_received_message(filename, response)
-    except:
-        print_error('Unable to save ' + filename)
+    # try:
+    cmd = 'get ' + filename
+    CONNECTED_SOCKET.send(str.encode(cmd))
+    response = listen()
+    if response != None:
+        segs = response.split(b' ')
+        received_hash = segs[0]
+        file_bytes = b' '.join(segs[1:])
+
+        file_hash = hashlib.sha256()
+        file_hash.update(file_bytes)
+
+        received_hash = b''
+        if received_hash == str.encode(file_hash.hexdigest()):
+            save_received_message(filename, file_bytes)
+        else:
+            print_error('Recived file differs from expected value. File may have been altered')
+
+
+    # except:
+    #     print_error('Unable to save ' + filename)
 
 # execute the `put` command
 def exec_put(filename):
     try:
         file_bytes = b''
+        file_hash = hashlib.sha256()
         with open(filename, 'rb') as f:
-            byte = f.read(1)
+            byte = f.read(1024)
             while byte:
                 file_bytes += byte
-                byte = f.read(1)
+                file_hash.update(byte)
+                byte = f.read(1024)
 
-        payload = b'put ' + str.encode(filename) + b' ' + file_bytes
+        # print('sha256: {0}'.format(file_hash.hexdigest()))
+
+        payload = b'put ' + str.encode(filename) + b' ' + str.encode(file_hash.hexdigest()) + b' ' + file_bytes
         CONNECTED_SOCKET.send(payload)
         response = listen()
         if response != None:

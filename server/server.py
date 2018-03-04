@@ -4,11 +4,11 @@
 import os
 
 def process(msg):
-    cmd, filename, payload = parse(msg)
+    cmd, filename, file_hash, file_bytes = parse(msg)
 
     # process cmd
     if cmd == 'put':
-        return exec_put(filename, payload)
+        return exec_put(filename, file_hash, file_bytes)
 
     elif cmd == 'get':
         return exec_get(filename)
@@ -31,12 +31,18 @@ def parse(msg):
     if len(segs) > 1:
         filename = segs[1]
 
-    # optionally, parse file payload
-    payload = ''
+    # optionally, parse file hash
+    file_hash = b''
     if len(segs) > 2:
-        payload = b' '.join(segs[2:])
+        file_hash = segs[2]
+        print(file_hash)
 
-    return (cmd, filename, payload)
+    # optionally, parse file contents
+    file_bytes = b''
+    if len(segs) > 3:
+        file_bytes = b' '.join(segs[3:])
+
+    return (cmd, filename, file_hash, file_bytes)
 
 def exec_ls():
     files = [f for f in os.listdir('.') if os.path.isfile(os.path.join('.', f))]
@@ -49,33 +55,49 @@ def exec_get(filename):
         return format_error('A <filename> must be provided for this type of command.')
 
     try:
+        file_hash = b''
+        with open(filename + b'.hash', 'rb') as f:
+            byte = f.read(1)
+            while byte:
+                file_hash += byte
+                byte = f.read(1)
+
         file_bytes = b''
         with open(filename, 'rb') as f:
             byte = f.read(1)
             while byte:
                 file_bytes += byte
                 byte = f.read(1)
-        return file_bytes
+        return file_hash + b' ' + file_bytes
     except FileNotFoundError:
         return format_error(filename.decode('utf-8') + ' does not exist on the server.')
     except:
         return format_error('Server is unable to load ' + filename.decode('utf-8'))
 
-def exec_put(filename, payload):
+def exec_put(filename, file_hash, file_bytes):
     # ensure filename is defined
     if len(filename) == 0:
         return format_error('A <filename> must be provided for this type of command.')
 
-    # ensure payload is defined
-    if len(payload) == 0:
+    # ensure file hash was provided
+    if len(file_hash) == 0:
+        return format_error('Cannot create a file without a hash.')
+
+    # ensure file contents are defined
+    if len(file_bytes) == 0:
         return format_error('Cannot create an empty file.')
-    # try:
+
+    # save hash
+    f = open(filename + b'.hash', 'wb')
+    f.write(file_hash)
+    f.close()
+
+    # save file
     f = open(filename, 'wb')
-    f.write(payload)
+    f.write(file_bytes)
     f.close()
     return b'Transfer successful'
-    # except:
-    #     graceful_exit('Error writing to disk.')
+
 
 def format_error(error_str):
     return b'0000 ' + str.encode(error_str)
