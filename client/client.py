@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+import os
 import sys
 import socket
 
@@ -19,24 +20,45 @@ def main():
     print_supported_commands('Welcome to our simple FTP client!')
 
     # prompt user for input
-    prompt()
+    while True:
+        prompt()
 
 def establish_connection(ip_addr, port):
-    global CONNECTED_SOCKET
-    CONNECTED_SOCKET = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    CONNECTED_SOCKET.settimeout(10)
-    CONNECTED_SOCKET.connect((ip_addr, port))
+    try:
+        global CONNECTED_SOCKET
+        CONNECTED_SOCKET = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        CONNECTED_SOCKET.settimeout(10)
+        CONNECTED_SOCKET.connect((ip_addr, port))
+    except ConnectionRefusedError:
+        exit_with_msg('Connection refused. Please check IP Address and port are correct and try again.')
 
 # prompt user for input
 def prompt():
     raw_in = input('cmd: ')
     input_tuple = parse_input(raw_in)
-    process_input(input_tuple)
+    if input_tuple != False:
+        process_input(input_tuple)
 
 # split input string into command and optional filename tuple
 def parse_input(str):
     segs = str.split(' ')
-    return (segs[0].lower(), (segs[1] if len(segs) > 1 else ''))
+
+    # define command to execute
+    cmd = segs[0].lower()
+
+    # ensure 2nd argument is optionally defined
+    try:
+        filename = ''
+        if cmd == 'put' or cmd == 'get':
+            filename = segs[1]
+
+        if filename.find('/') != -1:
+            raise
+    except:
+        print_error('A <filename> with no path must be provided for this type of command.')
+        return False
+
+    return (cmd, filename)
 
 # process input
 def process_input(input_tuple):
@@ -56,31 +78,33 @@ def process_input(input_tuple):
 
     else:
         print_supported_commands('Unfortunately that command is not supported.')
-        prompt()
 
 # listen for a response on the open socket
 def listen():
-    buff_size = 1024
-    payload = b''
-    listening = True
-    while listening:
-        seg = CONNECTED_SOCKET.recv(1024)
-        payload += seg
-        if len(seg) < buff_size:
-            listening = False
+    try:
+        buff_size = 1024
+        payload = b''
+        listening = True
+        while listening:
+            seg = CONNECTED_SOCKET.recv(1024)
+            payload += seg
+            if len(seg) < buff_size:
+                listening = False
 
-    if payload[0:4] == ERROR_MSG_PREFIX:
-        print_error(payload[5:].decode('utf-8'))
-        prompt()
-    return payload
+        if payload[0:4] == ERROR_MSG_PREFIX:
+            print_error(payload[5:].decode('utf-8'))
+        else:
+            return payload
+    except socket.timeout:
+        print_error('No response from Server. Try again.')
 
 # execute the `ls` command
 def exec_ls():
     CONNECTED_SOCKET.send(b'ls')
     response = listen()
-    filelist = response.decode('utf-8')
-    print (filelist)
-    prompt()
+    if response != None:
+        filelist = response.decode('utf-8')
+        print (filelist)
 
 # execute the `get` command
 def exec_get(filename):
@@ -88,11 +112,10 @@ def exec_get(filename):
         cmd = 'get ' + filename
         CONNECTED_SOCKET.send(str.encode(cmd))
         response = listen()
-        save_received_message(filename, response)
-        prompt()
+        if response != None:
+            save_received_message(filename, response)
     except:
         print_error('Unable to save ' + filename)
-        prompt()
 
 # execute the `put` command
 def exec_put(filename):
@@ -106,11 +129,13 @@ def exec_put(filename):
 
         payload = b'put ' + str.encode(filename) + b' ' + file_bytes
         CONNECTED_SOCKET.send(payload)
+        response = listen()
+        if response != None:
+            print (response)
+    except FileNotFoundError:
+        print_error(filename + ' does not exist.')
     except:
         print_error('Unable to load ' + filename + '.')
-
-    prompt()
-
 
 # write message to disk
 def save_received_message(filename, text):
