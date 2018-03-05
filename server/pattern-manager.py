@@ -7,75 +7,129 @@ import string
 
 PATTERN_FILE = "pattern-config"
 
-def main():
-    process()
+def process(args):
+    segs = args.split(' ')
+    if not segs:
+        print('Please include one of the following commands: add, print, delete, or exit.')
+        prompt()
 
-def process():
-    if len(sys.argv) < 2:
-        print('Please include one of the following commands: add, print, or delete.')
-        sys.exit(0)
-
-    cmd = sys.argv[1]
+    # define command to execute
+    cmd = segs[0].lower()
 
     # process cmd
     if cmd == 'add':
-        if len(sys.argv) < 4:
+        if len(segs) < 3:
             print('Add command must be of the following format: add [pattern_id] [pattern]')
-            sys.exit(0)
-        return exec_add(sys.argv[2], sys.argv[3])
+            prompt()
+        exec_add(segs[1], segs[2])
 
     elif cmd == 'print':
-        return exec_print()
+        exec_print()
 
     elif cmd == 'delete':
-        if len(sys.argv) < 3:
+        if len(segs) < 2:
             print('Delete command must be of the following format: delete [pattern_id]')
-            sys.exit(0)
-        return exec_delete(sys.argv[2])
+            prompt()
+        exec_delete(segs[1])
+    
+    elif cmd == 'exit':
+        sys.exit(0)
 
     else:
-        return format_error('Unsupported command.')
+        print('Unsupported command.')
+        prompt()
 
 def exec_print():
-    with open(PATTERN_FILE, 'r') as patterns:
-        data = json.load(patterns)
-        print('ID\tPattern')
-        for entry in data:
-            print(entry + '\t' + data[entry])
+    try:
+        with open(PATTERN_FILE, 'r') as patterns:
+            data = json.load(patterns)
+            print('ID\tPattern')
+            for entry in data:
+                print(entry + '\t' + data[entry])
+    except IOError as io_error:
+            exit_with_msg('Reading pattern file failed.', io_error)
 
 def exec_delete(pattern_id):
-    with open(PATTERN_FILE, 'r') as patterns:
-        data = json.load(patterns)
-        data.pop(pattern_id)
-    with open(PATTERN_FILE, 'w') as pattern_json:
-        json.dump(data, pattern_json)
+    data = None
+    try:
+        with open(PATTERN_FILE, 'r') as patterns:
+            data = json.load(patterns)
+            data.pop(pattern_id)
+    except IOError as io_error:
+            exit_with_msg('Reading pattern file failed.', io_error)
+    try:
+        with open(PATTERN_FILE, 'w') as pattern_json:
+            if data:
+                json.dump(data, pattern_json)
+    except IOError as io_error:
+            exit_with_msg('Writing to pattern file failed.', io_error)
 
 def exec_add(pattern_id, pattern):
     hex_input = all(c in string.hexdigits for c in pattern)
     if not hex_input:
         pattern = pattern.encode('utf-8').hex()
 
-    with open(PATTERN_FILE, 'r') as patterns:
-        try:
-            data = json.load(patterns)
-        except ValueError:
-            data = {}
+    data = None
+    try:
+        with open(PATTERN_FILE, 'r') as patterns:
+            try:
+                data = json.load(patterns)
+            except ValueError:
+                data = {}
 
-        if pattern_id in data:
-            print('Pattern id already in use, please choose another.')
-            sys.exit(0)
-        
-        if len(data) == 50:
-            print('A maximum of 50 patterns are allowed. Please delete in order to add more.')
-            sys.exit(0)
+            if pattern_id in data:
+                print('Pattern id already in use, please choose another.')
+                prompt()
+            
+            if len(data) == 50:
+                print('A maximum of 50 patterns are allowed. Please delete in order to add more.')
+                prompt()
 
-        data[pattern_id] = pattern
+            data[pattern_id] = pattern
+
+    except IOError as io_error:
+            exit_with_msg('Reading pattern file failed.', io_error)
    
+    try:
         with open(PATTERN_FILE, 'w') as pattern_json:
-            json.dump(data, pattern_json)
+            if data:
+                json.dump(data, pattern_json)
+    except IOError as io_error:
+            exit_with_msg('Writing to pattern file failed.', io_error)
 
-def format_error(error_str):
-    return b'0000 ' + str.encode(error_str)
+# Print message then exit
+def exit_with_msg(msg, err):
+    print ('\nPattern Manager exiting; ' + msg)
+    if err:
+        print ('\nError recieved: ' + err)
+    exit(0)
+
+# Print supported commands with optional pre-message
+def print_supported_commands(pre_message):
+    if pre_message != None:
+        print('\n' + pre_message + '\n')
+    print('The supported are as follows:')
+    print('`add <pattern_id> <pattern>`: Add a pattern and its id to the pattern-config file.')
+    print('`delete <pattern_id>`: Delete a pattern by its id.')
+    print('`print`: Print the contents of the pattern-config file.')
+    print('`exit`: Exit running application.\n')
+
+# prompt user for input
+def prompt():
+    raw_in = input('cmd: ')
+    process(raw_in)
+
+def main():
+    # print supported cmd's to user
+    print_supported_commands('Welcome to our simple Pattern Manager!')
+
+    try:
+        # prompt user for input
+        while True:
+            prompt()
+            
+    except KeyboardInterrupt:
+        print ('\nPattern Manager exiting.')
 
 if __name__ == '__main__':
     sys.exit(main())

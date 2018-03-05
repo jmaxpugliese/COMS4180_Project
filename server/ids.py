@@ -8,57 +8,58 @@ import binascii
 import server
 import datetime
 
-CONNECTED_SOCKET = None
-CONNECTED_CLIENT = None
-PACKET_SIZE = 1024
-PATTERN_FILE = "pattern-config"
-LOG_FILE = "ids-log"
+class Ids(object):
+    PACKET_SIZE = 1024
+    PATTERN_FILE = "pattern-config"
+    LOG_FILE = "ids-log"
 
-def main():
-    # process cli
-    args = get_runtime_args()
+    def __init__(self):
+        self._port = self.get_runtime_args()
+        self._ssock = None
 
-    # start IDS
-    s = init_socket(args)
+    # Retrieve and validate runtime arguments before starting the application
+    def get_runtime_args(self):
+        if len(sys.argv) != 2:
+            self.exit_with_msg('Please specify input with format:\n`<connection-port>`\n', None)
 
-    run()
+        if not sys.argv[1].isdigit():
+            self.exit_with_msg('Port must be an integer. Please try again.', None)
 
+        port = int(sys.argv[1])
+        if port < 0 or port > 65535:
+            self.exit_with_msg('Port number must be betwen 0-65535.', None)
+        
+        return port
 
-def run():
-    while True:
-        # wait for message
-        msg = listen()
+    def check_packet(self, pkt, connected_client):
+        hex_pkt = str(binascii.hexlify(pkt))
+       
+        try:
+            with open(self.PATTERN_FILE, 'r') as patterns:
+                data = json.load(patterns)
+                for entry in data:
+                    if data[entry] in hex_pkt:
+                        try:
+                            with open(self.LOG_FILE, 'a') as log_file:
+                                log_file.write('Pattern ID: ' + entry + '; Client IP: ' + connected_client[0] + '; Timestamp: ' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '\n')
+                        except IOError as io_error:
+                                self.exit_with_msg('Writing to log file failed.', io_error)
+                        return False
+        except IOError as io_error:
+            self.exit_with_msg('Reading pattern file failed.', io_error)
+        
+        return True
 
-        # send message to server for processing
-        byte_response = server.process(msg)
-
-        # respond to client
-        send(byte_response)
-
-def check_packet(pkt):
-    hex_pkt = str(binascii.hexlify(pkt))
-    with open(PATTERN_FILE, 'r') as patterns:
-        data = json.load(patterns)
-        for entry in data:
-            if data[entry] in hex_pkt:
-                with open(LOG_FILE, 'a') as log_file:
-                    log_file.write('Pattern ID: ' + entry + '; Client IP: ' + CONNECTED_CLIENT[0] + '; Timestamp: ' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '\n')
-                return False
-    return True
-
-
-# listen for messages on initialized port
-def listen():
-    try:
+    # listen for messages on initialized port
+    def listen(self, connected_socket, connected_client):
         # ensure the entire message is received before process
-        buff_size = 1024
+        buff_size = self.PACKET_SIZE
         msg = b''
         listening = True
         while listening:
-            seg = CONNECTED_SOCKET.recv(1024)
-            process_pkt = check_packet(seg)
+            seg = connected_socket.recv(self.PACKET_SIZE)
+            process_pkt = self.check_packet(seg, connected_client)
             # inspect segment
-
             if process_pkt:
                 msg += seg
 
@@ -66,53 +67,65 @@ def listen():
                 listening = False
 
         return msg
-    except ConnectionResetError:
-        CONNECTED_SOCKET.close()
-        exit_with_msg('Socket connection reset. Please start application again.')
-    except:
-        exit_with_msg('Unable to receive message from client. Please try again.')
 
-def send(b):
-    try:
-        print(b)
-        CONNECTED_SOCKET.send(b)
-    except:
-        CONNECTED_SOCKET.close()
-        exit_with_msg('Unknown error; exiting IDS.')
+    def send(self, response, connected_socket):
+        print('Sending response: ' + response.decode("utf-8"))
+        connected_socket.send(response)
+       
 
-# initialize socket for incoming messages
-def init_socket(port):
-    try:
-        global CONNECTED_SOCKET
-        global CONNECTED_CLIENT
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server_address = (socket.gethostbyname(socket.gethostname()), port)
-        print('Starting up on ip {} port {}'.format(server_address[0], server_address[1]))
-        s.bind(server_address)
-        #s.bind(('', port))
-        s.listen(1024)
-        print ('IDS is listening on port: %d' % port)
-        CONNECTED_SOCKET, CONNECTED_CLIENT = s.accept()
-        return s
-    except:
-        exit_with_msg('Unable to bind to port and listen for messages. Please try again.')
+    # initialize socket for incoming messages
+    def init_socket(self):
+        self._ssock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server_address = (socket.gethostbyname(socket.gethostname()), self._port)
+        self._ssock.bind(server_address)
+        self._ssock.listen(1)
+        print ('IDS starting up on ip {} port {}'.format(server_address[0], server_address[1]))
+        connected_socket, connected_client = self._ssock.accept()
+        print ('Connection from {}'.format(connected_client,))
+        return connected_socket, connected_client
 
-# Retrieve and validate runtime arguments before starting the application
-def get_runtime_args():
-    try:
-        # index 1: port number to open for connections
-        if len(sys.argv) == 2:
-            return (int(sys.argv[1]))
-        else:
-            exit_with_msg('Please specify input with format:\n`<connection-port>`\n')
+    def run(self):
+         # start IDS
+        
+        connected_socket = None
+        try:
+            connected_socket, connected_client = self.init_socket()
+            while True:
+                # wait for message
+                msg = self.listen(connected_socket, connected_client)
 
-    except ValueError:
-        exit_with_msg('Port must be an integer. Please try again.')
+                # send message to server for processing
+                byte_response = server.process(msg)
 
-# Print message then exit
-def exit_with_msg(m):
-    print ('\nIDS & Server Exiting; ' + m)
-    exit(0)
+                # respond to client
+                self.send(byte_response, connected_socket)
+
+        except KeyboardInterrupt:
+            self.exit_with_msg('Closing server socket', None)
+        except ConnectionResetError:
+            self.exit_with_msg('Socket connection reset. Please start application again.', None)
+        except socket.error as err:
+            self.exit_with_msg('Socket failure. Please start application again.', err)
+        except Exception as e:
+            self.exit_with_msg('IDS failed. Please try again.', e)
+
+        finally:
+            if connected_socket:
+                connected_socket.close()
+
+
+    # Print message then exit
+    def exit_with_msg(self, msg, err):
+        print ('\nIDS & Server Exiting; ' + msg)
+        
+        if err:
+            print ('Error recieved: {}'.format(err))
+        
+        if self._ssock:
+             self._ssock.close()
+             
+        exit(0)
 
 if __name__ == '__main__':
-    sys.exit(main())
+    ids = Ids()
+    ids.run()        
