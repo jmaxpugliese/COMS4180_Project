@@ -57,7 +57,7 @@ def send(b):
 def init_socket(port):
     try:
         global CONNECTED_SOCKET
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s = socket.socket(socket.AF_INET, socket.SOCK_RAW)
         s.bind(('', port))
         s.listen(1024)
         print ('IDS is listening on port: %d' % port)
