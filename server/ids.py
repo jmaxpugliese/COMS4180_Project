@@ -3,10 +3,16 @@
 
 import sys
 import socket
-
+import json
+import binascii
 import server
+import datetime
 
 CONNECTED_SOCKET = None
+CONNECTED_CLIENT = None
+PACKET_SIZE = 1024
+PATTERN_FILE = "pattern-config"
+LOG_FILE = "ids-log"
 
 def main():
     # process cli
@@ -30,7 +36,17 @@ def run():
         send(byte_response)
 
 def check_packet(pkt):
-    print(pkt)
+    hex_pkt = str(binascii.hexlify(pkt))
+    with open(PATTERN_FILE, 'r') as patterns:
+        data = json.load(patterns)
+        for entry in data:
+            if data[entry] in hex_pkt:
+                with open(LOG_FILE, 'a') as log_file:
+                    log_file.write('Pattern ID: ' + entry + '; Client IP: ' + CONNECTED_CLIENT[0] + '; Timestamp: ' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '\n')
+                return False
+    return True
+
+
 # listen for messages on initialized port
 def listen():
     try:
@@ -40,9 +56,12 @@ def listen():
         listening = True
         while listening:
             seg = CONNECTED_SOCKET.recv(1024)
-            check_packet(seg)
+            process_pkt = check_packet(seg)
             # inspect segment
-            msg += seg
+
+            if process_pkt:
+                msg += seg
+
             if len(seg) < buff_size:
                 listening = False
 
@@ -65,11 +84,15 @@ def send(b):
 def init_socket(port):
     try:
         global CONNECTED_SOCKET
+        global CONNECTED_CLIENT
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.bind(('', port))
+        server_address = (socket.gethostbyname(socket.gethostname()), port)
+        print('Starting up on ip {} port {}'.format(server_address[0], server_address[1]))
+        s.bind(server_address)
+        #s.bind(('', port))
         s.listen(1024)
         print ('IDS is listening on port: %d' % port)
-        CONNECTED_SOCKET, addr = s.accept()
+        CONNECTED_SOCKET, CONNECTED_CLIENT = s.accept()
         return s
     except:
         exit_with_msg('Unable to bind to port and listen for messages. Please try again.')

@@ -4,6 +4,9 @@
 import os
 
 def process(msg):
+    if msg == b'':
+        return format_error('Unable to process command due to packet drop.')
+    
     cmd, filename, payload = parse(msg)
 
     # process cmd
