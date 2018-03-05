@@ -5,7 +5,7 @@ import os
 
 def process(msg):
     if msg == b'':
-        return format_error('Unable to process command due to packet drop.')
+        return format_error('Unable to process request.')
     
     cmd, filename, payload = parse(msg)
 
@@ -19,8 +19,10 @@ def process(msg):
     elif cmd == 'ls':
         return exec_ls()
 
-    else:
-        return format_error('Unsupported command.')
+    elif cmd == 'exit':
+        return None
+
+    return format_error('Unsupported command.')
 
 # split input string into command and optional filename tuple
 def parse(msg):
@@ -48,34 +50,32 @@ def exec_ls():
 
 def exec_get(filename):
     # ensure filename is defined
-    if len(filename) == 0:
+    if not filename:
         return format_error('A <filename> must be provided for this type of command.')
 
     try:
         file_bytes = b''
         with open(filename, 'rb') as f:
-            byte = f.read(1)
-            while byte:
-                file_bytes += byte
-                byte = f.read(1)
+            file_bytes = bytes(f.read())
         return file_bytes
     except FileNotFoundError:
         return format_error(filename.decode('utf-8') + ' does not exist on the server.')
-    except:
-        return format_error('Server is unable to load ' + filename.decode('utf-8'))
+    except IOError:
+        return format_error('Server is unable to read ' + filename.decode('utf-8'))
 
 def exec_put(filename, payload):
     # ensure filename is defined
-    if len(filename) == 0:
+    if not filename:
         return format_error('A <filename> must be provided for this type of command.')
 
     # ensure payload is defined
-    if len(payload) == 0:
+    if not payload:
         return format_error('Cannot create an empty file.')
-    # try:
-    f = open(filename, 'wb')
-    f.write(payload)
-    f.close()
+    try:
+        with open(filename, 'wb') as f:
+            f.write(payload)
+    except IOError:
+            format_error('Writing to file ' + filename.decode('utf-8') + ' failed.')
     return b'Transfer successful'
     # except:
     #     graceful_exit('Error writing to disk.')

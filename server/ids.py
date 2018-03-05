@@ -68,7 +68,8 @@ class Ids(object):
 
         return msg
 
-    def send(self, response, connected_socket):
+    @staticmethod
+    def send(response, connected_socket):
         print('Sending response: ' + response.decode("utf-8"))
         connected_socket.send(response)
        
@@ -97,6 +98,10 @@ class Ids(object):
                 # send message to server for processing
                 byte_response = server.process(msg)
 
+                if not byte_response:
+                    self.send(b'Thank you!', connected_socket)
+                    self.exit_with_msg('Closing server socket.', None)
+
                 # respond to client
                 self.send(byte_response, connected_socket)
 
@@ -123,7 +128,7 @@ class Ids(object):
         
         if self._ssock:
              self._ssock.close()
-             
+
         exit(0)
 
 if __name__ == '__main__':
