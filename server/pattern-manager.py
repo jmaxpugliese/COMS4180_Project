@@ -3,6 +3,7 @@
 
 import sys
 import json
+import string
 
 PATTERN_FILE = "pattern-config"
 
@@ -50,6 +51,10 @@ def exec_delete(pattern_id):
         json.dump(data, pattern_json)
 
 def exec_add(pattern_id, pattern):
+    hex_input = all(c in string.hexdigits for c in pattern)
+    if not hex_input:
+        pattern = pattern.encode('utf-8').hex()
+
     with open(PATTERN_FILE, 'r') as patterns:
         try:
             data = json.load(patterns)
