@@ -29,6 +29,8 @@ def run():
         # respond to client
         send(byte_response)
 
+def check_packet(pkt):
+    print(pkt)
 # listen for messages on initialized port
 def listen():
     try:
@@ -38,6 +40,7 @@ def listen():
         listening = True
         while listening:
             seg = CONNECTED_SOCKET.recv(1024)
+            check_packet(seg)
             # inspect segment
             msg += seg
             if len(seg) < buff_size:
@@ -62,7 +65,7 @@ def send(b):
 def init_socket(port):
     try:
         global CONNECTED_SOCKET
-        s = socket.socket(socket.AF_INET, socket.SOCK_RAW)
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.bind(('', port))
         s.listen(1024)
         print ('IDS is listening on port: %d' % port)
