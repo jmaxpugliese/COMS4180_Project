@@ -21,7 +21,7 @@ def process(args):
         if len(segs) < 3:
             print('Add command must be of the following format: add [pattern_id] [pattern]')
             prompt()
-        exec_add(segs[1], segs[2])
+        exec_add(segs[1], ''.join(segs[2:]))
 
     elif cmd == 'print':
         exec_print()
@@ -68,6 +68,12 @@ def exec_add(pattern_id, pattern):
     hex_input = all(c in string.hexdigits for c in pattern)
     if not hex_input:
         pattern = pattern.encode('utf-8').hex()
+        
+    # Each byte of data -> 2-digit hex representation with hexlify.
+    # The resulting string is therefore twice as long as number of bytes.
+    if len(pattern)/2 > 32:
+        print('Pattern is more than 32 bytes, please enter another.')
+        prompt()
 
     data = None
     try:
@@ -127,7 +133,7 @@ def main():
         # prompt user for input
         while True:
             prompt()
-            
+
     except KeyboardInterrupt:
         print ('\nPattern Manager exiting.')
 
