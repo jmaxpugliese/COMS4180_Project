@@ -82,12 +82,16 @@ class Ids(object):
         while listening:
             seg = connected_socket.recv(self.PACKET_SIZE)
             process_pkt = self.check_packet(seg, connected_client[0])
+
             # inspect segment
             if process_pkt:
                 msg += seg
 
             if len(seg) < buff_size:
                 listening = False
+
+            if not listening and not process_pkt:
+                msg += b'\n'
 
         return msg
 

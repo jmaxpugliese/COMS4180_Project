@@ -4,9 +4,9 @@
 import sys
 import socket
 
-class Client(object):
+ERROR_MSG_PREFIX = b'0000'
 
-    ERROR_MSG_PREFIX = b'0000'
+class Client(object):
 
     def __init__(self):
         self._sock = None
@@ -102,8 +102,8 @@ class Client(object):
                 if len(seg) < buff_size:
                     listening = False
 
-            if payload[0:4] == self.ERROR_MSG_PREFIX:
-                self.print_error(payload[5:].decode('utf-8'))
+            if payload[0:4] == ERROR_MSG_PREFIX:
+                self.print_error(payload[4:].decode('utf-8'))
             else:
                 return payload
         except socket.timeout:

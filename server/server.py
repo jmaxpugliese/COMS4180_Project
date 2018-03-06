@@ -3,7 +3,7 @@
 
 import os
 
-ERROR_MSG_PREFIX = b'0000 '
+ERROR_MSG_PREFIX = b'0000'
 
 def process(msg):
     if msg == b'':
