@@ -114,6 +114,8 @@ class Client(object):
         try:
             self._sock.send(b'ls')
             response = self.listen()
+            if response == b'':
+                self.exit_with_msg('Socket failure. Lost connection.', None)
             if response != None:
                 filelist = response.decode('utf-8')
                 print (filelist)
@@ -126,6 +128,8 @@ class Client(object):
             cmd = 'get ' + filename
             self._sock.send(str.encode(cmd))
             response = self.listen()
+            if response == b'':
+                self.exit_with_msg('Socket failure. Lost connection.', None)
             if response != None:
                 self.save_received_message(filename, response)
         except socket.error as err:
@@ -141,6 +145,8 @@ class Client(object):
             payload = b'put ' + str.encode(filename) + b' ' + file_bytes
             self._sock.send(payload)
             response = self.listen()
+            if response == b'':
+                self.exit_with_msg('Socket failure. Lost connection.', None)
             if response != None:
                 print (response.decode('utf-8'))
         except FileNotFoundError:
@@ -156,6 +162,8 @@ class Client(object):
             cmd = 'exit'
             self._sock.send(str.encode(cmd))
             response = self.listen()
+            if response == b'':
+                self.exit_with_msg('Socket failure. Lost connection.', None)
             if response != None:
                 self._sock.close()
                 self.exit_with_msg(response.decode('utf-8'), None)

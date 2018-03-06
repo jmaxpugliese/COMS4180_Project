@@ -8,6 +8,8 @@ import binascii
 import server
 import datetime
 
+ERROR_MSG_PREFIX = b'0000'
+
 class Ids(object):
     PACKET_SIZE = 1024
     PATTERN_FILE = "pattern-config"
@@ -15,6 +17,7 @@ class Ids(object):
 
     def __init__(self):
         self._port = self.get_runtime_args()
+        self._ip_addr = socket.gethostbyname(socket.gethostname())
         self._ssock = None
 
     # Retrieve and validate runtime arguments before starting the application
@@ -31,7 +34,7 @@ class Ids(object):
         
         return port
 
-    def check_packet(self, pkt, connected_client):
+    def check_packet(self, pkt, connected_socket):
         hex_pkt = str(binascii.hexlify(pkt))
        
         try:
@@ -41,7 +44,7 @@ class Ids(object):
                     if data[entry] in hex_pkt:
                         try:
                             with open(self.LOG_FILE, 'a') as log_file:
-                                log_file.write('Pattern ID: ' + entry + '; Client IP: ' + connected_client[0] + '; Timestamp: ' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '\n')
+                                log_file.write('Pattern ID: ' + entry + '; IP Address: ' + connected_socket + '; Timestamp: ' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '\n')
                         except IOError as io_error:
                                 self.exit_with_msg('Writing to log file failed.', io_error)
                         return False
@@ -49,6 +52,26 @@ class Ids(object):
             self.exit_with_msg('Reading pattern file failed.', io_error)
         
         return True
+
+    def check_server_response(self, packet_data):
+        msg = b''
+        index = 0
+        while index < len(packet_data):
+            next_index = index+self.PACKET_SIZE
+            if next_index < len(packet_data):
+                seg = packet_data[index:index+self.PACKET_SIZE]
+                index = next_index
+            else:
+                end_index = len(packet_data)-index
+                seg = packet_data[index:end_index]
+                index = len(packet_data)
+
+            process_pkt = self.check_packet(seg, self._ip_addr)
+            # inspect segment
+            if process_pkt:
+                msg += seg
+
+        return msg
 
     # listen for messages on initialized port
     def listen(self, connected_socket, connected_client):
@@ -58,7 +81,7 @@ class Ids(object):
         listening = True
         while listening:
             seg = connected_socket.recv(self.PACKET_SIZE)
-            process_pkt = self.check_packet(seg, connected_client)
+            process_pkt = self.check_packet(seg, connected_client[0])
             # inspect segment
             if process_pkt:
                 msg += seg
@@ -77,10 +100,9 @@ class Ids(object):
     # initialize socket for incoming messages
     def init_socket(self):
         self._ssock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server_address = (socket.gethostbyname(socket.gethostname()), self._port)
-        self._ssock.bind(server_address)
+        self._ssock.bind((self._ip_addr, self._port))
         self._ssock.listen(1)
-        print ('IDS starting up on ip {} port {}'.format(server_address[0], server_address[1]))
+        print ('IDS starting up on ip {} port {}'.format(self._ip_addr, self._port))
         connected_socket, connected_client = self._ssock.accept()
         print ('Connection from {}'.format(connected_client,))
         return connected_socket, connected_client
@@ -102,8 +124,13 @@ class Ids(object):
                     self.send(b'Thank you!', connected_socket)
                     self.exit_with_msg('Closing server socket.', None)
 
+                to_send = self.check_server_response(byte_response)
+
                 # respond to client
-                self.send(byte_response, connected_socket)
+                if to_send:
+                    self.send(byte_response, connected_socket)
+                else:
+                    self.send(self.format_error('Unable to send server response.'), connected_socket)
 
         except KeyboardInterrupt:
             self.exit_with_msg('Closing server socket', None)
@@ -130,6 +157,10 @@ class Ids(object):
              self._ssock.close()
 
         exit(0)
+
+    @staticmethod
+    def format_error(error_str):
+        return ERROR_MSG_PREFIX + str.encode(error_str)
 
 if __name__ == '__main__':
     ids = Ids()

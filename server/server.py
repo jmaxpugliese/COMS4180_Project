@@ -3,6 +3,8 @@
 
 import os
 
+ERROR_MSG_PREFIX = b'0000 '
+
 def process(msg):
     if msg == b'':
         return format_error('Unable to process request.')
@@ -81,4 +83,4 @@ def exec_put(filename, payload):
     #     graceful_exit('Error writing to disk.')
 
 def format_error(error_str):
-    return b'0000 ' + str.encode(error_str)
+    return ERROR_MSG_PREFIX + str.encode(error_str)
