@@ -62,14 +62,19 @@ class Ids(object):
                 seg = packet_data[index:index+self.PACKET_SIZE]
                 index = next_index
             else:
-                end_index = len(packet_data)-index
+                end_index = len(packet_data)
                 seg = packet_data[index:end_index]
                 index = len(packet_data)
 
             process_pkt = self.check_packet(seg, self._ip_addr)
+            
             # inspect segment
             if process_pkt:
                 msg += seg
+
+            # Add EOF if last packet is dropped.
+            if index == len(packet_data) and not process_pkt:
+                msg += b'\n'
 
         return msg
 
@@ -82,7 +87,7 @@ class Ids(object):
         while listening:
             seg = connected_socket.recv(self.PACKET_SIZE)
             process_pkt = self.check_packet(seg, connected_client[0])
-
+            
             # inspect segment
             if process_pkt:
                 msg += seg
@@ -90,6 +95,7 @@ class Ids(object):
             if len(seg) < buff_size:
                 listening = False
 
+            # Add EOF if last packet is dropped.
             if not listening and not process_pkt:
                 msg += b'\n'
 
@@ -131,8 +137,8 @@ class Ids(object):
                 to_send = self.check_server_response(byte_response)
 
                 # respond to client
-                if to_send:
-                    self.send(byte_response, connected_socket)
+                if to_send != b'\n':
+                    self.send(to_send, connected_socket)
                 else:
                     self.send(self.format_error('Unable to send server response.'), connected_socket)
 

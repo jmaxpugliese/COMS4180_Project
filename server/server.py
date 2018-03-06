@@ -6,7 +6,7 @@ import os
 ERROR_MSG_PREFIX = b'0000'
 
 def process(msg):
-    if msg == b'':
+    if msg == b'\n':
         return format_error('Unable to process request.')
     
     cmd, filename, payload = parse(msg)
