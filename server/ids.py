@@ -1,46 +1,49 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import sys
 import socket
 import json
 import binascii
-import server
+import server_wrapper
 import datetime
 
 ERROR_MSG_PREFIX = b'0000'
+SUCCESS_MSG_PREFIX = b'1111'
 
 class Ids(object):
-    PACKET_SIZE = 1024
+    '''
+    The Ids class establishes and maintains a connection with a client. 
+    The client sends requests that the ids screens for forbidden patterns
+    within pattern-config. It will drop those packets and send the remaining
+    the server to process (through server_wrapper). The ids will then format
+    a reply for the client using the server's reponse, again screen for 
+    forbidden patterns, and send the packets that pass to the client.
+    '''
+
+    # mtu is 1500, subtract headers
+    PACKET_SIZE = 1436
     PATTERN_FILE = "pattern-config"
     LOG_FILE = "ids-log"
 
-    def __init__(self):
-        self._port = self.get_runtime_args()
+    def __init__(self, port):
+        self._port = port
         self._ip_addr = socket.gethostbyname(socket.gethostname())
         self._ssock = None
 
-    # Retrieve and validate runtime arguments before starting the application
-    def get_runtime_args(self):
-        if len(sys.argv) != 2:
-            self.exit_with_msg('Please specify input with format:\n`<connection-port>`\n', None)
-
-        if not sys.argv[1].isdigit():
-            self.exit_with_msg('Port must be an integer. Please try again.', None)
-
-        port = int(sys.argv[1])
-        if port < 0 or port > 65535:
-            self.exit_with_msg('Port number must be betwen 0-65535.', None)
-        
-        return port
-
     def check_packet(self, pkt, connected_socket):
+        '''
+        Verify that packet does not contain any patterns in the pattern-config file.
+        '''
+
+        # convert packet contents to hex
         hex_pkt = str(binascii.hexlify(pkt))
-       
         try:
             with open(self.PATTERN_FILE, 'r') as patterns:
                 data = json.load(patterns)
                 for entry in data:
+
+                    # check if pattern is in packet
+                    # if so write to log file and return false
                     if data[entry] in hex_pkt:
                         try:
                             with open(self.LOG_FILE, 'a') as log_file:
@@ -54,6 +57,11 @@ class Ids(object):
         return True
 
     def check_server_response(self, packet_data):
+        '''
+        Read server response in packet-size segments and filter out
+        packets with forbidden patterns in them.
+        '''
+
         msg = b''
         index = 0
         while index < len(packet_data):
@@ -61,41 +69,42 @@ class Ids(object):
             if next_index < len(packet_data):
                 seg = packet_data[index:index+self.PACKET_SIZE]
                 index = next_index
+            # last packet
             else:
                 end_index = len(packet_data)
                 seg = packet_data[index:end_index]
                 index = len(packet_data)
 
-            process_pkt = self.check_packet(seg, self._ip_addr)
-            
             # inspect segment
+            process_pkt = self.check_packet(seg, self._ip_addr)
             if process_pkt:
                 msg += seg
 
-            # Add EOF if last packet is dropped.
+            # add EOF if last packet is dropped
             if index == len(packet_data) and not process_pkt:
                 msg += b'\n'
 
         return msg
 
-    # listen for messages on initialized port
     def listen(self, connected_socket, connected_client):
-        # ensure the entire message is received before process
-        buff_size = self.PACKET_SIZE
+        '''
+        Listen for messages on initialized port.
+        '''
+        # entire message is received before process
         msg = b''
         listening = True
         while listening:
             seg = connected_socket.recv(self.PACKET_SIZE)
-            process_pkt = self.check_packet(seg, connected_client[0])
-            
+
             # inspect segment
+            process_pkt = self.check_packet(seg, connected_client[0])
             if process_pkt:
                 msg += seg
 
-            if len(seg) < buff_size:
+            if len(seg) < self.PACKET_SIZE:
                 listening = False
 
-            # Add EOF if last packet is dropped.
+            # add EOF if last packet is dropped.
             if not listening and not process_pkt:
                 msg += b'\n'
 
@@ -103,12 +112,17 @@ class Ids(object):
 
     @staticmethod
     def send(response, connected_socket):
+        '''
+        Send data to client.
+        '''
         print('Sending response: ' + response.decode("utf-8"))
         connected_socket.send(response)
        
-
-    # initialize socket for incoming messages
     def init_socket(self):
+        '''
+         Initialize socket for incoming messages from client.
+        '''
+
         self._ssock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._ssock.bind((self._ip_addr, self._port))
         self._ssock.listen(1)
@@ -117,30 +131,64 @@ class Ids(object):
         print ('Connection from {}'.format(connected_client,))
         return connected_socket, connected_client
 
+    def exit_with_msg(self, msg, err):
+        '''
+        Print message then exit.
+        '''
+
+        print ('\nIDS & Server Exiting; ' + msg)
+        
+        if err:
+            print ('Error recieved: {}'.format(err))
+        
+        # close server socket
+        if self._ssock:
+             self._ssock.close()
+
+        exit(0)
+
+    @staticmethod
+    def format_error(error_str):
+        '''
+        Add error code to server response.
+        '''
+        return ERROR_MSG_PREFIX + str.encode(error_str)
+
     def run(self):
-         # start IDS
+        '''
+        Run ids: initialize socket, wait for message, send to server
+        for processing (after packet analysis), and send server response to
+        client (after packet analysis).
+        '''
         
         connected_socket = None
         try:
             connected_socket, connected_client = self.init_socket()
             while True:
+                
                 # wait for message
                 msg = self.listen(connected_socket, connected_client)
 
                 # send message to server for processing
-                byte_response = server.process(msg)
+                byte_response = server_wrapper.server_to_ids(msg)
 
+                # if 'None' is response from server, it means exit
+                # command was sent.
+                # Close server.
                 if not byte_response:
                     self.send(b'Thank you!', connected_socket)
                     self.exit_with_msg('Closing server socket.', None)
 
+                # packets that passed analysis
                 to_send = self.check_server_response(byte_response)
 
                 # respond to client
-                if to_send != b'\n':
-                    self.send(to_send, connected_socket)
-                else:
-                    self.send(self.format_error('Unable to send server response.'), connected_socket)
+                # b'\n' indicates that all the packets were dropped
+                # no response needed for that case
+                #if to_send != b'\n':
+                self.send(to_send, connected_socket)
+                # else:
+                #     self.send(self.format_error('Unable to send server response.'), connected_socket)
 
         except KeyboardInterrupt:
             self.exit_with_msg('Closing server socket', None)
@@ -154,23 +202,6 @@ class Ids(object):
         finally:
             if connected_socket:
                 connected_socket.close()
-
-
-    # Print message then exit
-    def exit_with_msg(self, msg, err):
-        print ('\nIDS & Server Exiting; ' + msg)
-        
-        if err:
-            print ('Error recieved: {}'.format(err))
-        
-        if self._ssock:
-             self._ssock.close()
-
-        exit(0)
-
-    @staticmethod
-    def format_error(error_str):
-        return ERROR_MSG_PREFIX + str.encode(error_str)
 
 if __name__ == '__main__':
     ids = Ids()

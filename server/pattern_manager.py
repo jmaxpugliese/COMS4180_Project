@@ -4,10 +4,15 @@
 import sys
 import json
 import string
+import os
 
 PATTERN_FILE = "pattern-config"
 
 def process(args):
+    '''
+    Process commands entered by user. 
+    '''
+
     segs = args.split(' ')
     if not segs:
         print('Please include one of the following commands: add, print, delete, or exit.')
@@ -16,7 +21,7 @@ def process(args):
     # define command to execute
     cmd = segs[0].lower()
 
-    # process cmd
+    # process cmds
     if cmd == 'add':
         if len(segs) < 3:
             print('Add command must be of the following format: add [pattern_id] [pattern]')
@@ -40,7 +45,15 @@ def process(args):
         prompt()
 
 def exec_print():
+    '''
+    Print contents of pattern-config file.
+    '''
+
     try:
+        # create file if doesn't exist
+        if not os.path.exists(PATTERN_FILE):
+            with open(PATTERN_FILE, 'w'):
+                pass
         with open(PATTERN_FILE, 'r') as patterns:
             data = json.load(patterns)
             print('ID\tPattern')
@@ -50,8 +63,18 @@ def exec_print():
             exit_with_msg('Reading pattern file failed.', io_error)
 
 def exec_delete(pattern_id):
+    '''
+    Delete a pattern from pattern-config using its
+    associated id.
+    '''
+
     data = None
     try:
+        # create file if it doesn't exist
+        if not os.path.exists(PATTERN_FILE):
+            with open(PATTERN_FILE, 'w'):
+                pass
+        # delete pattern and write new contents.
         with open(PATTERN_FILE, 'r') as patterns:
             data = json.load(patterns)
             data.pop(pattern_id)
@@ -65,18 +88,30 @@ def exec_delete(pattern_id):
             exit_with_msg('Writing to pattern file failed.', io_error)
 
 def exec_add(pattern_id, pattern):
+    '''
+    Add a new pattern and id to the pattern-config file.
+    '''
+
+    # determine if user input is a hex or ascii string
+    # if ascii, change to hex
     hex_input = all(c in string.hexdigits for c in pattern)
     if not hex_input:
         pattern = pattern.encode('utf-8').hex()
         
-    # Each byte of data -> 2-digit hex representation with hexlify.
-    # The resulting string is therefore twice as long as number of bytes.
+    # each byte of data -> 2-digit hex representation with hexlify
+    # the resulting string is therefore twice as long as number of bytes
     if len(pattern)/2 > 32:
         print('Pattern is more than 32 bytes, please enter another.')
         prompt()
 
     data = None
     try:
+        # create file if does not exist
+        if not os.path.exists(PATTERN_FILE):
+            with open(PATTERN_FILE, 'w'):
+                pass
+        
+        # verify that pattern can be added to file
         with open(PATTERN_FILE, 'r') as patterns:
             try:
                 data = json.load(patterns)
@@ -97,21 +132,26 @@ def exec_add(pattern_id, pattern):
             exit_with_msg('Reading pattern file failed.', io_error)
    
     try:
+        # add pattern to file
         with open(PATTERN_FILE, 'w') as pattern_json:
             if data:
                 json.dump(data, pattern_json)
     except IOError as io_error:
             exit_with_msg('Writing to pattern file failed.', io_error)
 
-# Print message then exit
 def exit_with_msg(msg, err):
+    '''
+    Print message then exit.
+    '''
     print ('\nPattern Manager exiting; ' + msg)
     if err:
         print ('\nError recieved: ' + err)
     exit(0)
 
-# Print supported commands with optional pre-message
 def print_supported_commands(pre_message):
+    '''
+    Print supported commands with optional pre-message.
+    '''
     if pre_message != None:
         print('\n' + pre_message + '\n')
     print('The supported are as follows:')
@@ -120,12 +160,18 @@ def print_supported_commands(pre_message):
     print('`print`: Print the contents of the pattern-config file.')
     print('`exit`: Exit running application.\n')
 
-# prompt user for input
 def prompt():
+    '''
+    Prompt user for input.
+    '''
     raw_in = input('cmd: ')
     process(raw_in)
 
 def main():
+    '''
+    Begin user session.
+    '''
+
     # print supported cmd's to user
     print_supported_commands('Welcome to our simple Pattern Manager!')
 

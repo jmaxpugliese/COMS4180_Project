@@ -3,9 +3,23 @@
 
 import os
 
+'''
+Server functions that process commands from the client, with no actual connection to the client.
+The server processes client data from the ids that is sent through server_wrapper. Once processed,
+the server will send its response to the ids through server_wrapper.
+'''
+
 ERROR_MSG_PREFIX = b'0000'
+SUCCESS_MSG_PREFIX = b'1111'
+FILE_DIR = './files'
 
 def process(msg):
+    '''
+    Process client requests.
+    '''
+
+    # this case occurs when the entire client request is dropped
+    # ids adds '\n' to close a file in case last packet is dropped
     if msg == b'\n':
         return format_error('Unable to process request.')
     
@@ -21,13 +35,18 @@ def process(msg):
     elif cmd == 'ls':
         return exec_ls()
 
+    # nothing to process
+    # send ids signal to close connection
     elif cmd == 'exit':
         return None
 
     return format_error('Unsupported command.')
 
-# split input string into command and optional filename tuple
 def parse(msg):
+    '''
+    Split input string into command and optional filename tuple.
+    '''
+
     segs = msg.split(b' ')
 
     # parse cmd
@@ -46,26 +65,41 @@ def parse(msg):
     return (cmd, filename, payload)
 
 def exec_ls():
-    files = [f for f in os.listdir('.') if os.path.isfile(os.path.join('.', f))]
+    '''
+    Execute the `ls` command.
+    '''
+
+    # add all files in the ./files directory
+    files = [f for f in os.listdir(FILE_DIR) if os.path.isfile(os.path.join(FILE_DIR, f))]
     response = ' '.join(files)
-    return str.encode(response)
+    return SUCCESS_MSG_PREFIX + str.encode(response)
 
 def exec_get(filename):
+    '''
+    Execute the `get` command.
+    '''
+
     # ensure filename is defined
     if not filename:
         return format_error('A <filename> must be provided for this type of command.')
 
     try:
+        # retrieve and send file contents.
         file_bytes = b''
-        with open(filename, 'rb') as f:
+        file_path = os.path.join(FILE_DIR, filename.decode('utf-8'))
+        with open(file_path, 'rb') as f:
             file_bytes = bytes(f.read())
-        return file_bytes
+        return SUCCESS_MSG_PREFIX + file_bytes
     except FileNotFoundError:
         return format_error(filename.decode('utf-8') + ' does not exist on the server.')
     except IOError:
         return format_error('Server is unable to read ' + filename.decode('utf-8'))
 
 def exec_put(filename, payload):
+    '''
+    Execute the `put` command.
+    '''
+
     # ensure filename is defined
     if not filename:
         return format_error('A <filename> must be provided for this type of command.')
@@ -74,13 +108,18 @@ def exec_put(filename, payload):
     if not payload:
         return format_error('Cannot create an empty file.')
     try:
-        with open(filename, 'wb') as f:
+        # write file contents to ./files directory
+        file_path = os.path.join(FILE_DIR, filename.decode('utf-8'))
+        with open(file_path, 'wb') as f:
             f.write(payload)
     except IOError:
             format_error('Writing to file ' + filename.decode('utf-8') + ' failed.')
-    return b'Transfer successful'
-    # except:
-    #     graceful_exit('Error writing to disk.')
+    return SUCCESS_MSG_PREFIX + b'Transfer successful'
+
 
 def format_error(error_str):
+    '''
+    Add error code to server response.
+    '''
+
     return ERROR_MSG_PREFIX + str.encode(error_str)
