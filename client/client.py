@@ -147,11 +147,11 @@ class Client(object):
 
             # receive list of files on the server
             response = self.listen()
-            if response:
+            if response == b'':
+                self.exit_with_msg('Socket failure. Lost connection.', None)
+            if response != None:
                 filelist = response.decode('utf-8')
                 print (filelist)
-            else:
-                self.exit_with_msg('Socket failure. Lost connection.', None)
         except socket.error as err:
             self.exit_with_msg('Socket failure. Please start application again.', err)
 
@@ -166,11 +166,10 @@ class Client(object):
             self._sock.send(str.encode(cmd))
             response = self.listen()
 
-            if response:
-                self.save_received_message(filename, response)
-            # if nothing is recieved from the server, close connection
-            else:
+            if response == b'':
                 self.exit_with_msg('Socket failure. Lost connection.', None)
+            if response != None:
+                self.save_received_message(filename, response)
         except socket.error as err:
             self.exit_with_msg('Socket failure. Please start application again.', err)
 
@@ -190,14 +189,14 @@ class Client(object):
             payload = b'put ' + str.encode(filename) + b' ' + file_bytes
             self._sock.send(payload)
             response = self.listen()
-            if response:
-                print (response.decode('utf-8'))
-            else:
+            if response == b'':
                 self.exit_with_msg('Socket failure. Lost connection.', None)
+            if response != None:
+                print (response.decode('utf-8'))
         except FileNotFoundError:
             self.print_error(filename + ' does not exist.')
         except IOError as io_error:
-            self.print_error('Reading file {} failed.'.format(filename), io_error)
+            self.print_error('Reading file {} failed. Error: {}'.format(filename, io_error))
         except socket.error as err:
             self.exit_with_msg('Socket failure. Please start application again.', err)
 
@@ -207,12 +206,14 @@ class Client(object):
         '''
         try:
             cmd = 'exit'
-
-            # send command to server
             self._sock.send(str.encode(cmd))
             response = self.listen()
-            self._sock.close()
-            self.exit_with_msg(response.decode('utf-8'), None)
+            print(response)
+            if response == b'':
+                self.exit_with_msg('Socket failure. Lost connection.', None)
+            if response != None:
+                self._sock.close()
+                self.exit_with_msg(response.decode('utf-8'), None)
         except socket.error as err:
             self.exit_with_msg('Socket failure. Please start application again.', err)
 
@@ -226,7 +227,7 @@ class Client(object):
             with open(file_path, 'wb') as f:
                 f.write(text)
         except IOError as io_error:
-            self.print_error('Writing to file {} failed.'.format(filename), io_error)
+            self.print_error('Writing to file {} failed. Error: {}'.format(filename, io_error))
 
     @staticmethod
     def print_supported_commands(pre_message):
