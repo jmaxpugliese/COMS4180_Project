@@ -66,7 +66,7 @@ def parse(msg):
     # optionally, parse file contents
     file_bytes = b''
     if len(segs) > 3:
-        file_bytes = b''.join(segs[3:])
+        file_bytes = b' '.join(segs[3:])
 
     return (cmd, filename, file_hash, file_bytes)
 
@@ -100,7 +100,7 @@ def exec_get(filename):
         file_path = os.path.join(FILE_DIR, filename.decode('utf-8'))
         with open(file_path, 'rb') as f:
             file_bytes = bytes(f.read())
-        return SUCCESS_MSG_PREFIX + file_hash + b' ' + file_bytes
+        return SUCCESS_MSG_PREFIX + hash_bytes + b' ' + file_bytes
     except FileNotFoundError:
         return format_error(filename.decode('utf-8') + ' does not exist on the server.')
     except IOError:
@@ -127,7 +127,6 @@ def exec_put(filename, file_hash, file_bytes):
         hash_path = os.path.join(FILE_DIR, filename.decode('utf-8') + '.hash')
         with open(hash_path, 'wb') as f:
             f.write(file_hash)
-
         # write file contents to ./files directory
         file_path = os.path.join(FILE_DIR, filename.decode('utf-8'))
         with open(file_path, 'wb') as f:

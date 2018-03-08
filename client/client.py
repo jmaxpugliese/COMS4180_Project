@@ -176,8 +176,7 @@ class Client(object):
 
                 file_hash = hashlib.sha256()
                 file_hash.update(file_bytes)
-
-                received_hash = b''
+                
                 if received_hash == str.encode(file_hash.hexdigest()):
                     self.save_received_message(filename, file_bytes)
                 else:
