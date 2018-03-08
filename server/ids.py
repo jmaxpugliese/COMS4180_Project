@@ -12,11 +12,11 @@ SUCCESS_MSG_PREFIX = b'1111'
 
 class Ids(object):
     '''
-    The Ids class establishes and maintains a connection with a client. 
+    The Ids class establishes and maintains a connection with a client.
     The client sends requests that the ids screens for forbidden patterns
     within pattern-config. It will drop those packets and send the remaining
     the server to process (through server_wrapper). The ids will then format
-    a reply for the client using the server's reponse, again screen for 
+    a reply for the client using the server's reponse, again screen for
     forbidden patterns, and send the packets that pass to the client.
     '''
 
@@ -53,7 +53,7 @@ class Ids(object):
                         return False
         except IOError as io_error:
             self.exit_with_msg('Reading pattern file failed.', io_error)
-        
+
         return True
 
     def check_server_response(self, packet_data):
@@ -117,7 +117,7 @@ class Ids(object):
         '''
         print('Sending response: ' + response.decode("utf-8"))
         connected_socket.send(response)
-       
+
     def init_socket(self):
         '''
          Initialize socket for incoming messages from client.
@@ -137,10 +137,10 @@ class Ids(object):
         '''
 
         print ('\nIDS & Server Exiting; ' + msg)
-        
+
         if err:
             print ('Error recieved: {}'.format(err))
-        
+
         # close server socket
         if self._ssock:
              self._ssock.close()
@@ -160,17 +160,17 @@ class Ids(object):
         for processing (after packet analysis), and send server response to
         client (after packet analysis).
         '''
-        
+
         connected_socket = None
         try:
             connected_socket, connected_client = self.init_socket()
             while True:
-                
+
                 # wait for message
                 msg = self.listen(connected_socket, connected_client)
 
                 # send message to server for processing
-                byte_response = server_wrapper.server_to_ids(msg)
+                byte_response = server_wrapper.server_ids_relay(msg)
 
                 # if 'None' is response from server, it means exit
                 # command was sent.
@@ -205,4 +205,4 @@ class Ids(object):
 
 if __name__ == '__main__':
     ids = Ids()
-    ids.run()        
+    ids.run()

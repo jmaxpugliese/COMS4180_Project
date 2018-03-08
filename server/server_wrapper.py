@@ -7,7 +7,7 @@ import ids
 
 '''
 Wrapper for ids and server functions. Parses user input, initializes the ids,
-and relays communication between the ids and server. 
+and relays communication between the ids and server.
 '''
 
 def get_runtime_args():
@@ -27,19 +27,19 @@ def get_runtime_args():
     if port < 0 or port > 65535:
         print('Port number must be betwen 0-65535.')
         exit(0)
-    
+
     return port
 
-def server_to_ids(msg):
+def server_ids_relay(msg):
     '''
     Ids calls this function which in turn sends the client data to
-    the server and sends the server's response to the ids. 
+    the server and sends the server's response to the ids.
     '''
     return server.process(msg)
 
 def main():
     '''
-    Starts ids with port from commandline arguments. 
+    Starts ids with port from commandline arguments.
     '''
 
     port = get_runtime_args()
