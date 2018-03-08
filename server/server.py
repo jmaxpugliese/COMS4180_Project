@@ -30,7 +30,6 @@ def process(msg):
         return exec_put(filename, file_hash, file_bytes)
 
     elif cmd == 'get':
-        print(file_hash)
         return exec_get(filename)
 
     elif cmd == 'ls':
@@ -67,7 +66,7 @@ def parse(msg):
     # optionally, parse file contents
     file_bytes = b''
     if len(segs) > 3:
-        file_bytes = b' '.join(segs[3:])
+        file_bytes = b''.join(segs[3:])
 
     return (cmd, filename, file_hash, file_bytes)
 
@@ -93,7 +92,7 @@ def exec_get(filename):
     try:
         # retrieve and send file contents.
         file_hash = b''
-        hash_path = os.path.join(FILE_DIR, filename.decode('utf-8') + b'.hash')
+        hash_path = os.path.join(FILE_DIR, filename.decode('utf-8') + '.hash')
         with open(hash_path, 'rb') as f:
             hash_bytes = bytes(f.read())
 
@@ -125,7 +124,7 @@ def exec_put(filename, file_hash, file_bytes):
         return format_error('Cannot create an empty file.')
     try:
          # write hash contents to ./files directory
-        hash_path = os.path.join(FILE_DIR, filename.decode('utf-8') + b'.hash')
+        hash_path = os.path.join(FILE_DIR, filename.decode('utf-8') + '.hash')
         with open(hash_path, 'wb') as f:
             f.write(file_hash)
 

@@ -176,7 +176,7 @@ class Ids(object):
                 # command was sent.
                 # Close server.
                 if not byte_response:
-                    self.send(b'Thank you!', connected_socket)
+                    self.send(SUCCESS_MSG_PREFIX + b'Thank you!', connected_socket)
                     self.exit_with_msg('Closing server socket.', None)
 
                 # packets that passed analysis
@@ -185,10 +185,10 @@ class Ids(object):
                 # respond to client
                 # b'\n' indicates that all the packets were dropped
                 # no response needed for that case
-                #if to_send != b'\n':
-                self.send(to_send, connected_socket)
-                # else:
-                #     self.send(self.format_error('Unable to send server response.'), connected_socket)
+                if to_send != b'\n':
+                    self.send(to_send, connected_socket)
+                else:
+                    self.send(self.format_error('Unable to send server response.'), connected_socket)
 
         except KeyboardInterrupt:
             self.exit_with_msg('Closing server socket', None)
