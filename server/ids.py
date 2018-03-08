@@ -1,92 +1,208 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import sys
 import socket
+import json
+import binascii
+import server_wrapper
+import datetime
 
-import server
+ERROR_MSG_PREFIX = b'0000'
+SUCCESS_MSG_PREFIX = b'1111'
 
-CONNECTED_SOCKET = None
+class Ids(object):
+    '''
+    The Ids class establishes and maintains a connection with a client. 
+    The client sends requests that the ids screens for forbidden patterns
+    within pattern-config. It will drop those packets and send the remaining
+    the server to process (through server_wrapper). The ids will then format
+    a reply for the client using the server's reponse, again screen for 
+    forbidden patterns, and send the packets that pass to the client.
+    '''
 
-def main():
-    # process cli
-    args = get_runtime_args()
+    # mtu is 1500, subtract headers
+    PACKET_SIZE = 1436
+    PATTERN_FILE = "pattern-config"
+    LOG_FILE = "ids-log"
 
-    # start IDS
-    s = init_socket(args)
+    def __init__(self, port):
+        self._port = port
+        self._ip_addr = socket.gethostbyname(socket.gethostname())
+        self._ssock = None
 
-    run()
+    def check_packet(self, pkt, connected_socket):
+        '''
+        Verify that packet does not contain any patterns in the pattern-config file.
+        '''
 
+        # convert packet contents to hex
+        hex_pkt = str(binascii.hexlify(pkt))
+        try:
+            with open(self.PATTERN_FILE, 'r') as patterns:
+                data = json.load(patterns)
+                for entry in data:
 
-def run():
-    while True:
-        # wait for message
-        msg = listen()
+                    # check if pattern is in packet
+                    # if so write to log file and return false
+                    if data[entry] in hex_pkt:
+                        try:
+                            with open(self.LOG_FILE, 'a') as log_file:
+                                log_file.write('Pattern ID: ' + entry + '; IP Address: ' + connected_socket + '; Timestamp: ' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '\n')
+                        except IOError as io_error:
+                                self.exit_with_msg('Writing to log file failed.', io_error)
+                        return False
+        except IOError as io_error:
+            self.exit_with_msg('Reading pattern file failed.', io_error)
+        
+        return True
 
-        # send message to server for processing
-        byte_response = server.process(msg)
+    def check_server_response(self, packet_data):
+        '''
+        Read server response in packet-size segments and filter out
+        packets with forbidden patterns in them.
+        '''
 
-        # respond to client
-        send(byte_response)
+        msg = b''
+        index = 0
+        while index < len(packet_data):
+            next_index = index+self.PACKET_SIZE
+            if next_index < len(packet_data):
+                seg = packet_data[index:index+self.PACKET_SIZE]
+                index = next_index
+            # last packet
+            else:
+                end_index = len(packet_data)
+                seg = packet_data[index:end_index]
+                index = len(packet_data)
 
-# listen for messages on initialized port
-def listen():
-    try:
-        # ensure the entire message is received before process
-        buff_size = 1024
+            # inspect segment
+            process_pkt = self.check_packet(seg, self._ip_addr)
+            if process_pkt:
+                msg += seg
+
+            # add EOF if last packet is dropped
+            if index == len(packet_data) and not process_pkt:
+                msg += b'\n'
+
+        return msg
+
+    def listen(self, connected_socket, connected_client):
+        '''
+        Listen for messages on initialized port.
+        '''
+        # entire message is received before process
         msg = b''
         listening = True
         while listening:
-            seg = CONNECTED_SOCKET.recv(1024)
+            seg = connected_socket.recv(self.PACKET_SIZE)
+
             # inspect segment
-            msg += seg
-            if len(seg) < buff_size:
+            process_pkt = self.check_packet(seg, connected_client[0])
+            if process_pkt:
+                msg += seg
+
+            if len(seg) < self.PACKET_SIZE:
                 listening = False
 
+            # add EOF if last packet is dropped.
+            if not listening and not process_pkt:
+                msg += b'\n'
+
         return msg
-    except ConnectionResetError:
-        CONNECTED_SOCKET.close()
-        exit_with_msg('Socket connection reset. Please start application again.')
-    except:
-        exit_with_msg('Unable to receive message from client. Please try again.')
 
-def send(b):
-    try:
-        print(b)
-        CONNECTED_SOCKET.send(b)
-    except:
-        CONNECTED_SOCKET.close()
-        exit_with_msg('Unknown error; exiting IDS.')
+    @staticmethod
+    def send(response, connected_socket):
+        '''
+        Send data to client.
+        '''
+        print('Sending response: ' + response.decode("utf-8"))
+        connected_socket.send(response)
+       
+    def init_socket(self):
+        '''
+         Initialize socket for incoming messages from client.
+        '''
 
-# initialize socket for incoming messages
-def init_socket(port):
-    try:
-        global CONNECTED_SOCKET
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.bind(('', port))
-        s.listen(1024)
-        print ('IDS is listening on port: %d' % port)
-        CONNECTED_SOCKET, addr = s.accept()
-        return s
-    except:
-        exit_with_msg('Unable to bind to port and listen for messages. Please try again.')
+        self._ssock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._ssock.bind((self._ip_addr, self._port))
+        self._ssock.listen(1)
+        print ('IDS starting up on ip {} port {}'.format(self._ip_addr, self._port))
+        connected_socket, connected_client = self._ssock.accept()
+        print ('Connection from {}'.format(connected_client,))
+        return connected_socket, connected_client
 
-# Retrieve and validate runtime arguments before starting the application
-def get_runtime_args():
-    try:
-        # index 1: port number to open for connections
-        if len(sys.argv) == 2:
-            return (int(sys.argv[1]))
-        else:
-            exit_with_msg('Please specify input with format:\n`<connection-port>`\n')
+    def exit_with_msg(self, msg, err):
+        '''
+        Print message then exit.
+        '''
 
-    except ValueError:
-        exit_with_msg('Port must be an integer. Please try again.')
+        print ('\nIDS & Server Exiting; ' + msg)
+        
+        if err:
+            print ('Error recieved: {}'.format(err))
+        
+        # close server socket
+        if self._ssock:
+             self._ssock.close()
 
-# Print message then exit
-def exit_with_msg(m):
-    print ('\nIDS & Server Exiting; ' + m)
-    exit(0)
+        exit(0)
+
+    @staticmethod
+    def format_error(error_str):
+        '''
+        Add error code to server response.
+        '''
+        return ERROR_MSG_PREFIX + str.encode(error_str)
+
+    def run(self):
+        '''
+        Run ids: initialize socket, wait for message, send to server
+        for processing (after packet analysis), and send server response to
+        client (after packet analysis).
+        '''
+        
+        connected_socket = None
+        try:
+            connected_socket, connected_client = self.init_socket()
+            while True:
+                
+                # wait for message
+                msg = self.listen(connected_socket, connected_client)
+
+                # send message to server for processing
+                byte_response = server_wrapper.server_to_ids(msg)
+
+                # if 'None' is response from server, it means exit
+                # command was sent.
+                # Close server.
+                if not byte_response:
+                    self.send(b'Thank you!', connected_socket)
+                    self.exit_with_msg('Closing server socket.', None)
+
+                # packets that passed analysis
+                to_send = self.check_server_response(byte_response)
+
+                # respond to client
+                # b'\n' indicates that all the packets were dropped
+                # no response needed for that case
+                #if to_send != b'\n':
+                self.send(to_send, connected_socket)
+                # else:
+                #     self.send(self.format_error('Unable to send server response.'), connected_socket)
+
+        except KeyboardInterrupt:
+            self.exit_with_msg('Closing server socket', None)
+        except ConnectionResetError:
+            self.exit_with_msg('Socket connection reset. Please start application again.', None)
+        except socket.error as err:
+            self.exit_with_msg('Socket failure. Please start application again.', err)
+        except Exception as e:
+            self.exit_with_msg('IDS failed. Please try again.', e)
+
+        finally:
+            if connected_socket:
+                connected_socket.close()
 
 if __name__ == '__main__':
-    sys.exit(main())
+    ids = Ids()
+    ids.run()        
