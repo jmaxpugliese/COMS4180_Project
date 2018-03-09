@@ -22,12 +22,12 @@ def process(msg):
     # ids adds '\n' to close a file in case last packet is dropped
     if msg == b'\n':
         return format_error('Unable to process request.')
-    
-    cmd, filename, payload = parse(msg)
+
+    cmd, filename, file_hash, file_bytes = parse(msg)
 
     # process cmd
     if cmd == 'put':
-        return exec_put(filename, payload)
+        return exec_put(filename, file_hash, file_bytes)
 
     elif cmd == 'get':
         return exec_get(filename)
@@ -57,12 +57,18 @@ def parse(msg):
     if len(segs) > 1:
         filename = segs[1]
 
-    # optionally, parse file payload
-    payload = ''
+    # optionally, parse file hash
+    file_hash = b''
     if len(segs) > 2:
-        payload = b' '.join(segs[2:])
+        file_hash = segs[2]
+        print(file_hash)
 
-    return (cmd, filename, payload)
+    # optionally, parse file contents
+    file_bytes = b''
+    if len(segs) > 3:
+        file_bytes = b' '.join(segs[3:])
+
+    return (cmd, filename, file_hash, file_bytes)
 
 def exec_ls():
     '''
@@ -84,18 +90,26 @@ def exec_get(filename):
         return format_error('A <filename> must be provided for this type of command.')
 
     try:
+
+        print format_error(filename.decode('utf-8') + ' does not exist on the server.')
         # retrieve and send file contents.
+        file_hash = b''
+        hash_path = os.path.join(FILE_DIR, filename.decode('utf-8') + '.hash')
+        with open(hash_path, 'rb') as f:
+            hash_bytes = bytes(f.read())
+
         file_bytes = b''
         file_path = os.path.join(FILE_DIR, filename.decode('utf-8'))
         with open(file_path, 'rb') as f:
             file_bytes = bytes(f.read())
-        return SUCCESS_MSG_PREFIX + file_bytes
-    except FileNotFoundError:
+        return SUCCESS_MSG_PREFIX + hash_bytes + b' ' + file_bytes
+
+    except OSError:
         return format_error(filename.decode('utf-8') + ' does not exist on the server.')
     except IOError:
         return format_error('Server is unable to read ' + filename.decode('utf-8'))
 
-def exec_put(filename, payload):
+def exec_put(filename, file_hash, file_bytes):
     '''
     Execute the `put` command.
     '''
@@ -104,14 +118,22 @@ def exec_put(filename, payload):
     if not filename:
         return format_error('A <filename> must be provided for this type of command.')
 
+    # ensure file hash was provided
+    if not file_hash:
+        return format_error('Cannot create a file without a hash.')
+
     # ensure payload is defined
-    if not payload:
+    if not file_bytes:
         return format_error('Cannot create an empty file.')
     try:
+         # write hash contents to ./files directory
+        hash_path = os.path.join(FILE_DIR, filename.decode('utf-8') + '.hash')
+        with open(hash_path, 'wb') as f:
+            f.write(file_hash)
         # write file contents to ./files directory
         file_path = os.path.join(FILE_DIR, filename.decode('utf-8'))
         with open(file_path, 'wb') as f:
-            f.write(payload)
+            f.write(file_bytes)
     except IOError:
             format_error('Writing to file ' + filename.decode('utf-8') + ' failed.')
     return SUCCESS_MSG_PREFIX + b'Transfer successful'
@@ -121,5 +143,6 @@ def format_error(error_str):
     '''
     Add error code to server response.
     '''
+    print(error_str)
 
     return ERROR_MSG_PREFIX + str.encode(error_str)

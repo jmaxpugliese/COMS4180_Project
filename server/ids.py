@@ -192,8 +192,8 @@ class Ids(object):
 
         except KeyboardInterrupt:
             self.exit_with_msg('Closing server socket', None)
-        except ConnectionResetError:
-            self.exit_with_msg('Socket connection reset. Please start application again.', None)
+        # except ConnectionResetError:
+        #     self.exit_with_msg('Socket connection reset. Please start application again.', None)
         except socket.error as err:
             self.exit_with_msg('Socket failure. Please start application again.', err)
         except Exception as e:

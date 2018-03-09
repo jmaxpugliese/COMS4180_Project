@@ -4,6 +4,7 @@
 import os
 import sys
 import socket
+import hashlib
 
 ERROR_MSG_PREFIX = b'0000'
 SUCCESS_MSG_PREFIX = b'1111'
@@ -168,8 +169,18 @@ class Client(object):
 
             if response == b'':
                 self.exit_with_msg('Socket failure. Lost connection.', None)
-            if response != None:
-                self.save_received_message(filename, response)
+            if response != None:   
+                segs = response.split(b' ')
+                received_hash = segs[0]
+                file_bytes = b' '.join(segs[1:])
+
+                file_hash = hashlib.sha256()
+                file_hash.update(file_bytes)
+                
+                if received_hash == str.encode(file_hash.hexdigest()):
+                    self.save_received_message(filename, file_bytes)
+                else:
+                    self.print_error('Recieved file differs from expected value. File may have been altered')
         except socket.error as err:
             self.exit_with_msg('Socket failure. Please start application again.', err)
 
@@ -179,14 +190,16 @@ class Client(object):
         '''
         try:
             file_bytes = b''
-            
+            file_hash = hashlib.sha256()
+
             # read file contents
             file_path = os.path.join(self.FILE_DIR, filename)
             with open(file_path, 'rb') as f:
                 file_bytes = bytes(f.read())
+                file_hash.update(file_bytes)
 
             # format message to send to server
-            payload = b'put ' + str.encode(filename) + b' ' + file_bytes
+            payload = b'put ' + str.encode(filename) + b' ' + str.encode(file_hash.hexdigest()) + b' ' + file_bytes
             self._sock.send(payload)
             response = self.listen()
             if response == b'':
@@ -208,7 +221,6 @@ class Client(object):
             cmd = 'exit'
             self._sock.send(str.encode(cmd))
             response = self.listen()
-            print(response)
             if response == b'':
                 self.exit_with_msg('Socket failure. Lost connection.', None)
             if response != None:
