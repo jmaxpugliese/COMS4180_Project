@@ -90,8 +90,6 @@ def exec_get(filename):
         return format_error('A <filename> must be provided for this type of command.')
 
     try:
-
-        print format_error(filename.decode('utf-8') + ' does not exist on the server.')
         # retrieve and send file contents.
         file_hash = b''
         hash_path = os.path.join(FILE_DIR, filename.decode('utf-8') + '.hash')
@@ -104,8 +102,8 @@ def exec_get(filename):
             file_bytes = bytes(f.read())
         return SUCCESS_MSG_PREFIX + hash_bytes + b' ' + file_bytes
 
-    except OSError:
-        return format_error(filename.decode('utf-8') + ' does not exist on the server.')
+    except FileNotFoundError:
+            return format_error(filename.decode('utf-8') + ' does not exist on the server.')
     except IOError:
         return format_error('Server is unable to read ' + filename.decode('utf-8'))
 
