@@ -10,7 +10,7 @@ PATTERN_FILE = "pattern-config"
 
 def process(args):
     '''
-    Process commands entered by user. 
+    Process commands entered by user.
     '''
 
     segs = args.split(' ')
@@ -36,7 +36,7 @@ def process(args):
             print('Delete command must be of the following format: delete [pattern_id]')
             prompt()
         exec_delete(segs[1])
-    
+
     elif cmd == 'exit':
         sys.exit(0)
 
@@ -48,7 +48,6 @@ def exec_print():
     '''
     Print contents of pattern-config file.
     '''
-
     try:
         # create file if doesn't exist
         if not os.path.exists(PATTERN_FILE):
@@ -60,7 +59,9 @@ def exec_print():
             for entry in data:
                 print(entry + '\t' + data[entry])
     except IOError as io_error:
-            exit_with_msg('Reading pattern file failed.', io_error)
+        exit_with_msg('Reading pattern file failed.', io_error)
+    except ValueError:
+        print('No patterns have been added to the pattern manager yet')
 
 def exec_delete(pattern_id):
     '''
@@ -97,7 +98,7 @@ def exec_add(pattern_id, pattern):
     hex_input = all(c in string.hexdigits for c in pattern)
     if not hex_input:
         pattern = pattern.encode('utf-8').hex()
-        
+
     # each byte of data -> 2-digit hex representation with hexlify
     # the resulting string is therefore twice as long as number of bytes
     if len(pattern)/2 > 32:
@@ -110,7 +111,7 @@ def exec_add(pattern_id, pattern):
         if not os.path.exists(PATTERN_FILE):
             with open(PATTERN_FILE, 'w'):
                 pass
-        
+
         # verify that pattern can be added to file
         with open(PATTERN_FILE, 'r') as patterns:
             try:
@@ -121,7 +122,7 @@ def exec_add(pattern_id, pattern):
             if pattern_id in data:
                 print('Pattern id already in use, please choose another.')
                 prompt()
-            
+
             if len(data) == 50:
                 print('A maximum of 50 patterns are allowed. Please delete in order to add more.')
                 prompt()
@@ -130,7 +131,7 @@ def exec_add(pattern_id, pattern):
 
     except IOError as io_error:
             exit_with_msg('Reading pattern file failed.', io_error)
-   
+
     try:
         # add pattern to file
         with open(PATTERN_FILE, 'w') as pattern_json:
