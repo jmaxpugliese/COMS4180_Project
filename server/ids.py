@@ -119,7 +119,10 @@ class Ids(object):
         '''
         Send data to client.
         '''
-        print('Sending response: ' + response.decode("utf-8"))
+        if len(response.decode("utf-8")) > 100:
+            print('Sending response: ' + response.decode("utf-8")[0:100] + '...')
+        else:
+            print('Sending response: ' + response.decode("utf-8"))
         connected_socket.send(response)
 
     def init_socket(self):
