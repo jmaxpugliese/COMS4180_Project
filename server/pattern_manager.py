@@ -83,7 +83,7 @@ def exec_delete(pattern_id):
             exit_with_msg('Reading pattern file failed.', io_error)
     except ValueError:
         print('A pattern by that name does not currently exist')
-        
+
     try:
         with open(PATTERN_FILE, 'w') as pattern_json:
             if data:
@@ -110,40 +110,41 @@ def exec_add(pattern_id, pattern):
         print('Pattern is more than 32 bytes, please enter another.')
         prompt()
 
-    data = None
-    try:
-        # create file if does not exist
-        if not os.path.exists(PATTERN_FILE):
-            with open(PATTERN_FILE, 'w'):
-                pass
+    else:
+        data = None
+        try:
+            # create file if does not exist
+            if not os.path.exists(PATTERN_FILE):
+                with open(PATTERN_FILE, 'w'):
+                    pass
 
-        # verify that pattern can be added to file
-        with open(PATTERN_FILE, 'r') as patterns:
-            try:
-                data = json.load(patterns)
-            except ValueError:
-                data = {}
+            # verify that pattern can be added to file
+            with open(PATTERN_FILE, 'r') as patterns:
+                try:
+                    data = json.load(patterns)
+                except ValueError:
+                    data = {}
 
-            if pattern_id in data:
-                print('Pattern id already in use, please choose another.')
-                prompt()
+                if pattern_id in data:
+                    print('Pattern id already in use, please choose another.')
+                    prompt()
 
-            if len(data) == 50:
-                print('A maximum of 50 patterns are allowed. Please delete in order to add more.')
-                prompt()
+                if len(data) == 50:
+                    print('A maximum of 50 patterns are allowed. Please delete in order to add more.')
+                    prompt()
 
-            data[pattern_id] = pattern
+                data[pattern_id] = pattern
 
-    except IOError as io_error:
-            exit_with_msg('Reading pattern file failed.', io_error)
+        except IOError as io_error:
+                exit_with_msg('Reading pattern file failed.', io_error)
 
-    try:
-        # add pattern to file
-        with open(PATTERN_FILE, 'w') as pattern_json:
-            if data:
-                json.dump(data, pattern_json)
-    except IOError as io_error:
-            exit_with_msg('Writing to pattern file failed.', io_error)
+        try:
+            # add pattern to file
+            with open(PATTERN_FILE, 'w') as pattern_json:
+                if data:
+                    json.dump(data, pattern_json)
+        except IOError as io_error:
+                exit_with_msg('Writing to pattern file failed.', io_error)
 
 def exit_with_msg(msg, err):
     '''
