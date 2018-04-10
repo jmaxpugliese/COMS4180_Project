@@ -77,7 +77,12 @@ def exec_ls():
 
     # add all files in the ./files directory
     files = [f for f in os.listdir(FILE_DIR) if os.path.isfile(os.path.join(FILE_DIR, f))]
-    response = ' '.join(files)
+
+    if len(files) > 0:
+        response = ' '.join(files)
+    else:
+        response = 'The FTP directory is currently empty.'
+
     return SUCCESS_MSG_PREFIX + str.encode(response)
 
 def exec_get(filename):
