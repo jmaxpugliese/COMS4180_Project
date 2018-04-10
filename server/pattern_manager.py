@@ -81,12 +81,17 @@ def exec_delete(pattern_id):
             data.pop(pattern_id)
     except IOError as io_error:
             exit_with_msg('Reading pattern file failed.', io_error)
+    except ValueError:
+        print('A pattern by that name does not currently exist')
+        
     try:
         with open(PATTERN_FILE, 'w') as pattern_json:
             if data:
                 json.dump(data, pattern_json)
     except IOError as io_error:
             exit_with_msg('Writing to pattern file failed.', io_error)
+    except ValueError:
+        print('A pattern by that name does not currently exist')
 
 def exec_add(pattern_id, pattern):
     '''
