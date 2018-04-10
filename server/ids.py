@@ -39,7 +39,11 @@ class Ids(object):
         hex_pkt = str(binascii.hexlify(pkt))
         try:
             with open(self.PATTERN_FILE, 'r') as patterns:
-                data = json.load(patterns)
+                try:
+                    data = json.load(patterns)
+                except:
+                    data = {}
+
                 for entry in data:
 
                     # check if pattern is in packet
