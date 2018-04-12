@@ -118,11 +118,12 @@ class Client(object):
         Listen for a response from the server on the open socket.
         '''
         try:
-            buff_size = 1024
+            buff_size = 4096
             payload = b''
             listening = True
+            self._sock.settimeout(60)
             while listening:
-                seg = self._sock.recv(1024)
+                seg = self._sock.recv(buff_size)
                 payload += seg
                 if len(seg) < buff_size:
                     listening = False
@@ -200,7 +201,7 @@ class Client(object):
 
             # format message to send to server
             payload = b'put ' + str.encode(filename) + b' ' + str.encode(file_hash.hexdigest()) + b' ' + file_bytes
-            self._sock.send(payload)
+            self._sock.sendall(payload)
             response = self.listen()
             if response == b'':
                 self.exit_with_msg('Socket failure. Lost connection.', None)
